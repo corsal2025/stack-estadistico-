@@ -4,6 +4,14 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap');
 
+/* Preload Google Fonts para mejor rendimiento */
+@media (prefers-reduced-motion: no-preference) {
+  link[rel="preconnect"] {
+    rel: preconnect;
+    href: https://fonts.googleapis.com;
+  }
+}
+
 /* Variables y Tokens de Diseño */
 :root {
   --font-primary: 'Geist', sans-serif;

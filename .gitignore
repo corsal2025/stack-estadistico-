@@ -11,6 +11,12 @@ data/*.db
 .env
 .env.local
 .env.*.local
+.env.production
+.env.production.local
+server/.env
+server/.env.local
+client/.env
+client/.env.local
 
 # Build outputs
 dist/

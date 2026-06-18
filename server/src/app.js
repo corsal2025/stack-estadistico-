@@ -3,6 +3,12 @@ import cors from 'cors';
 import { initDatabase } from './controllers/excelController.js';
 import excelRoutes from './routes/excelRoutes.js';
 
+// Validar setup antes de iniciar
+if (!process.env.PORT && !process.env.NODE_ENV) {
+  console.warn('⚠️  Advertencia: Variables de entorno no configuradas. Usando defaults.');
+  console.warn('   Crea server/.env con PORT, NODE_ENV, CORS_ORIGIN para producción.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3002;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3005';

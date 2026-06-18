@@ -11,7 +11,7 @@ import { generatePdfReport } from './components/PdfReportGenerator';
 
 gsap.registerPlugin(useGSAP);
 
-const API_BASE_URL = 'http://localhost:3002/api/stats';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/api/stats`;
 
 function App() {
   const containerRef = useRef(null);
