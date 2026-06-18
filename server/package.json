@@ -1,0 +1,19 @@
+{
+  "name": "licencias-backend",
+  "version": "1.0.0",
+  "description": "Backend para procesamiento de Excel de licencias de conducir",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.3"
+  }
+}

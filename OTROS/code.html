@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Analytics | Establish Your Mission Control</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;300;400;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Geist', sans-serif;
+            background-color: #050505;
+            color: #e2e1eb;
+            overflow-x: hidden;
+        }
+
+        .obsidian-glass {
+            background: rgba(15, 15, 17, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(39, 39, 42, 0.5);
+        }
+
+        .neon-pulse-cyan {
+            box-shadow: 0 0 15px rgba(0, 219, 231, 0.4);
+            animation: pulse-cyan 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-cyan {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .glow-text-cyan {
+            text-shadow: 0 0 20px rgba(0, 219, 231, 0.5);
+        }
+
+        .holographic-border {
+            position: relative;
+        }
+        .holographic-border::after {
+            content: '';
+            position: absolute;
+            inset: -0.5px;
+            background: linear-gradient(to right, #00dbe7, #ffabf3);
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .data-stream-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00dbe7, transparent);
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .data-stream-line::after {
+            content: '';
+            position: absolute;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #ffabf3, transparent);
+            animation: stream 3s infinite linear;
+        }
+
+        @keyframes stream {
+            100% { left: 100%; }
+        }
+
+        .bg-obsidian { background-color: #050505; }
+        
+        .hero-gradient-text {
+            background: linear-gradient(to right, #00dbe7, #ffabf3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#282a31",
+                      "on-surface": "#e2e1eb",
+                      "on-secondary-fixed-variant": "#810081",
+                      "error-container": "#93000a",
+                      "on-secondary-fixed": "#380038",
+                      "on-error-container": "#ffdad6",
+                      "outline": "#849495",
+                      "surface-tint": "#00dbe7",
+                      "surface-bright": "#383940",
+                      "secondary-fixed-dim": "#ffabf3",
+                      "on-tertiary-fixed": "#1c1b1b",
+                      "outline-variant": "#3a494b",
+                      "primary": "#e1fdff",
+                      "on-primary-container": "#006a71",
+                      "on-tertiary-fixed-variant": "#474646",
+                      "surface-container-highest": "#33343c",
+                      "on-error": "#690005",
+                      "inverse-on-surface": "#2f3037",
+                      "on-tertiary": "#313030",
+                      "tertiary-fixed-dim": "#c9c6c5",
+                      "secondary-fixed": "#ffd7f5",
+                      "surface-variant": "#33343c",
+                      "primary-container": "#00f2ff",
+                      "on-background": "#e2e1eb",
+                      "inverse-primary": "#00696f",
+                      "primary-fixed-dim": "#00dbe7",
+                      "on-primary-fixed": "#002022",
+                      "tertiary": "#faf6f6",
+                      "tertiary-container": "#dddad9",
+                      "on-surface-variant": "#b9cacb",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#fe00fe",
+                      "on-primary": "#00363a",
+                      "surface-container": "#1e1f26",
+                      "inverse-surface": "#e2e1eb",
+                      "on-secondary-container": "#500050",
+                      "secondary": "#ffabf3",
+                      "primary-fixed": "#74f5ff",
+                      "background": "#12131a",
+                      "surface-container-lowest": "#0c0e14",
+                      "on-secondary": "#5b005b",
+                      "surface": "#12131a",
+                      "surface-dim": "#12131a",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface-container-low": "#1a1b22",
+                      "on-tertiary-container": "#615f5f",
+                      "tertiary-fixed": "#e5e2e1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max": "1440px",
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "margin-safe": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Geist"],
+                      "display-lg": ["Geist"],
+                      "label-mono": ["Geist"],
+                      "data-numeric": ["Geist"],
+                      "display-lg-mobile": ["Geist"],
+                      "body-base": ["Geist"]
+              },
+              "fontSize": {
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                      "label-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "500"}],
+                      "data-numeric": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "display-lg-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-base": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-obsidian">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-50">
+<div class="flex justify-between items-center h-16 px-gutter max-w-container-max mx-auto">
+<div class="font-headline-md text-headline-md tracking-tighter text-on-surface uppercase">
+                Lumina Analytics
+            </div>
+<div class="hidden md:flex gap-8">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-base text-body-base transition-all duration-300 ease-out" href="#">Platform</a>
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary hover:shadow-[0_0_15px_rgba(0,219,231,0.4)] font-body-base text-body-base transition-all duration-300 ease-out" href="#">Solutions</a>
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary hover:shadow-[0_0_15px_rgba(0,219,231,0.4)] font-body-base text-body-base transition-all duration-300 ease-out" href="#">Network</a>
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary hover:shadow-[0_0_15px_rgba(0,219,231,0.4)] font-body-base text-body-base transition-all duration-300 ease-out" href="#">Pricing</a>
+</div>
+<button class="px-6 py-2 border border-primary text-primary hover:bg-primary/10 transition-all duration-300 font-label-mono text-label-mono uppercase tracking-widest">
+                Launch Mission
+            </button>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="relative pt-32 pb-20 overflow-hidden">
+
+<div class="relative z-10 max-w-container-max mx-auto px-gutter grid lg:grid-cols-2 gap-12 items-center">
+<div class="space-y-8">
+<div class="inline-flex items-center gap-2 px-3 py-1 obsidian-glass border border-primary/20 rounded-full">
+<span class="w-2 h-2 bg-primary rounded-full neon-pulse-cyan"></span>
+<span class="text-label-mono font-label-mono text-primary uppercase tracking-widest">System Online: v4.2.0</span>
+</div>
+<h1 class="font-display-lg text-display-lg md:text-display-lg leading-tight">
+                    Establish Your <br/>
+<span class="hero-gradient-text italic">Mission Control</span>
+</h1>
+<p class="text-body-base font-body-base text-on-surface-variant max-w-md">
+                    Execute high-fidelity financial intelligence with sub-millisecond precision. Lumina provides the cognitive edge required for elite institutional market analysis.
+                </p>
+<div class="flex flex-wrap gap-4">
+<button class="px-8 py-4 bg-primary text-on-primary font-bold transition-all hover:shadow-[0_0_20px_rgba(0,219,231,0.6)]">
+                        Initialize Terminal
+                    </button>
+<button class="px-8 py-4 border border-outline text-on-surface font-bold hover:bg-surface-container transition-all">
+                        View Documentation
+                    </button>
+</div>
+</div>
+<!-- Hero Visuals: Holographic Grid -->
+<div class="relative h-[500px] obsidian-glass border border-outline-variant/30 overflow-hidden rounded-lg group">
+<div class="absolute inset-0 grid grid-cols-6 grid-rows-6 opacity-20">
+<div class="border-r border-b border-outline-variant/30"></div>
+<div class="border-r border-b border-outline-variant/30"></div>
+<div class="border-r border-b border-outline-variant/30"></div>
+<div class="border-r border-b border-outline-variant/30"></div>
+<div class="border-r border-b border-outline-variant/30"></div>
+<div class="border-r border-b border-outline-variant/30"></div>
+</div>
+<!-- Floating Stats -->
+<div class="absolute top-8 left-8 p-4 obsidian-glass border-l-2 border-primary">
+<div class="text-label-mono font-label-mono text-primary/70 uppercase">Global Throughput</div>
+<div class="text-headline-md font-data-numeric text-on-surface">14.2 TB/s</div>
+</div>
+<div class="absolute bottom-8 right-8 p-4 obsidian-glass border-r-2 border-secondary">
+<div class="text-label-mono font-label-mono text-secondary/70 uppercase text-right">Anomaly Detect</div>
+<div class="text-headline-md font-data-numeric text-on-surface">0.00032%</div>
+</div>
+<!-- Central Visual -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-64 h-64 border-2 border-primary/20 rounded-full flex items-center justify-center animate-[spin_20s_linear_infinite]">
+<div class="w-48 h-48 border-2 border-secondary/20 rounded-full border-t-secondary animate-[spin_10s_linear_infinite_reverse]"></div>
+</div>
+<div class="absolute text-center">
+<span class="material-symbols-outlined text-64px text-primary glow-text-cyan" style="font-size: 64px;">query_stats</span>
+</div>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" data-alt="A highly detailed 8k cinematic visualization of a futuristic financial analytics dashboard. The scene features glowing neon cyan line graphs and holographic magenta data rings floating in a deep obsidian black digital space. Sophisticated 3D data visualizations and thin neon pulse lines create an atmosphere of elite technical power and high-end corporate elegance, lit by soft cyan atmospheric glows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhe_4Uu5bONbSOSAt0Kd_Nk8bFJsXT4ohxUOP5yIPRTjCeYYrfcQg_AwLspT-Wem1vitVjih2CKeNNnO4lCF9sASXr1yb05WRHA3nrL2IJblLVg89teSkxGid-KHlzhc7nBm2BcGYRE5oyXslhLDQi6SOEf6VI88KDh8tkYm8TifxjXCixNLXH_fhZXxVG8yeAixQZLh3prq84F-SmSSs-kwILBhje2vjpy3I4XWmFJoDw-OCe2dAtXSezuByvhMKWz42AqJvsjC3m"/>
+</div>
+</div>
+</section>
+<!-- Data Stream Divider -->
+<div class="data-stream-line my-4"></div>
+<!-- Section 1: Real-time Monitoring -->
+<section class="py-20 px-gutter max-w-container-max mx-auto">
+<div class="mb-12">
+<h2 class="font-headline-md text-headline-md text-primary uppercase tracking-widest mb-2">Real-time Monitoring</h2>
+<div class="w-24 h-1 bg-primary"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Monitoring Card 1 -->
+<div class="obsidian-glass border border-outline-variant/30 p-6 flex flex-col justify-between h-64 group hover:border-primary/50 transition-colors">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary">speed</span>
+<span class="text-label-mono font-label-mono text-primary/50">LIVE</span>
+</div>
+<div class="font-headline-md text-headline-md mb-1">Latency</div>
+<p class="text-label-mono text-on-surface-variant">Packet propagation delay across clusters.</p>
+</div>
+<div class="relative h-16 w-full">
+
+<div class="absolute bottom-0 right-0 font-data-numeric text-primary">0.08ms</div>
+</div>
+</div>
+<!-- Monitoring Card 2 -->
+<div class="obsidian-glass border border-outline-variant/30 p-6 flex flex-col justify-between h-64 group hover:border-secondary/50 transition-colors">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-secondary">analytics</span>
+<span class="text-label-mono font-label-mono text-secondary/50">ACTIVE</span>
+</div>
+<div class="font-headline-md text-headline-md mb-1">Stability</div>
+<p class="text-label-mono text-on-surface-variant">System-wide coherence metrics.</p>
+</div>
+<div class="relative h-16 w-full">
+<div class="flex items-end gap-1 h-full">
+<div class="w-1 bg-secondary h-[40%] animate-pulse"></div>
+<div class="w-1 bg-secondary h-[60%] animate-pulse delay-75"></div>
+<div class="w-1 bg-secondary h-[90%] animate-pulse delay-150"></div>
+<div class="w-1 bg-secondary h-[50%] animate-pulse"></div>
+<div class="w-1 bg-secondary h-[70%] animate-pulse delay-100"></div>
+<div class="w-1 bg-secondary h-[85%] animate-pulse"></div>
+</div>
+<div class="absolute bottom-0 right-0 font-data-numeric text-secondary">99.999%</div>
+</div>
+</div>
+<!-- Monitoring Card 3 -->
+<div class="obsidian-glass border border-outline-variant/30 p-6 flex flex-col justify-between h-64 group hover:border-primary/50 transition-colors">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary">hub</span>
+<span class="text-label-mono font-label-mono text-primary/50">SYNC</span>
+</div>
+<div class="font-headline-md text-headline-md mb-1">Node Status</div>
+<p class="text-label-mono text-on-surface-variant">Global distributed ledger health.</p>
+</div>
+<div class="flex gap-2">
+<div class="w-2 h-2 rounded-full bg-primary neon-pulse-cyan"></div>
+<div class="w-2 h-2 rounded-full bg-primary neon-pulse-cyan"></div>
+<div class="w-2 h-2 rounded-full bg-primary neon-pulse-cyan"></div>
+<div class="w-2 h-2 rounded-full bg-primary/20"></div>
+<div class="w-2 h-2 rounded-full bg-primary/20"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Predictive AI (Bento Style) -->
+<section class="py-20 bg-surface-container-lowest">
+<div class="max-w-container-max mx-auto px-gutter">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Main Visual -->
+<div class="md:col-span-8 relative h-[400px] obsidian-glass border border-outline-variant/30 p-8 overflow-hidden">
+<div class="relative z-10">
+<h2 class="font-display-lg text-display-lg mb-4">Predictive AI</h2>
+<p class="text-on-surface-variant max-w-sm mb-8">
+                            Our neural networks anticipate market shifts before they manifest, utilizing holographic data rings for multi-dimensional visualization.
+                        </p>
+<div class="grid grid-cols-2 gap-8 max-w-md">
+<div>
+<div class="text-label-mono text-primary uppercase">Prediction Accuracy</div>
+<div class="text-headline-md font-data-numeric">98.4%</div>
+</div>
+<div>
+<div class="text-label-mono text-secondary uppercase">Market Alpha</div>
+<div class="text-headline-md font-data-numeric">+12.4BP</div>
+</div>
+</div>
+</div>
+<!-- Decorative Holographic Rings -->
+<div class="absolute -right-20 -bottom-20 w-80 h-80 border-[0.5px] border-secondary/40 rounded-full animate-[spin_15s_linear_infinite] pointer-events-none"></div>
+<div class="absolute -right-24 -bottom-24 w-96 h-96 border-[0.5px] border-primary/40 rounded-full animate-[spin_25s_linear_infinite_reverse] pointer-events-none"></div>
+</div>
+<!-- Side Info -->
+<div class="md:col-span-4 obsidian-glass border border-outline-variant/30 p-8 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-secondary mb-4">auto_awesome</span>
+<h3 class="font-headline-md text-headline-md mb-2">Adaptive Learning</h3>
+<p class="text-on-surface-variant text-label-mono">The system continuously re-calibrates against volatility spikes in real-time.</p>
+</div>
+<div class="mt-8">
+<div class="w-full h-32 rounded bg-cover bg-center" data-alt="Close-up macro shot of a sophisticated glass prism refracting light into vibrant cyan and magenta spectrums. The background is a deep, velvety obsidian black, emphasizing the sharp, geometric lines of the crystal. The lighting is cold and clinical, suggesting a high-tech laboratory environment. The visual style is minimalist yet intricate, conveying precision and advanced computing power." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAKL-5hI1ZhtgIrZUTDKssnEv7yciokG6bYkJUjyqski289PWRyXdPPAn5nUGwtDZIhTpcRljoNicLfMFEcmset8bS5WAvR5mTyNYdI-nLI4uuGx1VnSfatxdnULtwnZhVgo4fBbHaS0_sr4MMaCTQIodB26C23ETU9_BgosqVbpozBLHW4rP7ei4k_BI-JfGut0XS2BB8TsxmY07H5UKeYTEzHEqCCjdLQnDI_bPJobQge6Uej1TIfClqh4bgjucG7oj_Y_nH3NV60')"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: System Throughput -->
+<section class="py-20 px-gutter max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface uppercase tracking-tighter mb-2">System Throughput</h2>
+<p class="text-on-surface-variant max-w-md">High-density data visualization showing sub-second transaction volumes and validator load.</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-primary"></span>
+<span class="text-label-mono font-label-mono uppercase">Primary Cluster</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-secondary"></span>
+<span class="text-label-mono font-label-mono uppercase">Neural Shard</span>
+</div>
+</div>
+</div>
+<!-- Hyper-detailed Histogram Grid -->
+<div class="obsidian-glass border border-outline-variant/30 p-8 h-96 flex items-end justify-between gap-1 relative">
+<!-- Grid Lines Background -->
+<div class="absolute inset-0 flex flex-col justify-between p-8 opacity-10 pointer-events-none">
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+</div>
+<!-- Histogram Bars (Generated for high density) -->
+<script>
+                const container = document.currentScript.parentElement;
+                for(let i=0; i<60; i++) {
+                    const bar = document.createElement('div');
+                    const height = Math.floor(Math.random() * 80) + 10;
+                    const isMagenta = Math.random() > 0.8;
+                    bar.className = `w-full ${isMagenta ? 'bg-secondary/60 hover:bg-secondary' : 'bg-primary/40 hover:bg-primary'} transition-all duration-300 group relative`;
+                    bar.style.height = `${height}%`;
+                    
+                    // Tooltip
+                    const tooltip = document.createElement('div');
+                    tooltip.className = "absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-container-highest text-[10px] p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap border border-outline-variant";
+                    tooltip.innerText = `${(height * 1.2).toFixed(1)} GB/s`;
+                    bar.appendChild(tooltip);
+                    
+                    container.appendChild(bar);
+                }
+            </script>
+</div>
+<div class="flex justify-between mt-4 text-label-mono font-label-mono text-on-surface-variant/50">
+<span>00:00:00 UTC</span>
+<span>NODE_DELTA: 0.04ms</span>
+<span>ACTIVE_SESSIONS: 42,901</span>
+<span>00:00:60 UTC</span>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-32 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-transparent to-primary/5"></div>
+<div class="max-w-container-max mx-auto px-gutter text-center relative z-10">
+<h2 class="font-display-lg text-display-lg mb-8">Ready for Command?</h2>
+<p class="text-on-surface-variant text-body-base max-w-xl mx-auto mb-12">
+                Join the most advanced financial intelligence network. Access sub-second latency analytics and institutional grade predictive AI.
+            </p>
+<button class="px-12 py-5 bg-transparent border-2 border-primary text-primary font-bold text-headline-md tracking-widest hover:bg-primary hover:text-on-primary transition-all duration-500 hover:shadow-[0_0_40px_rgba(0,219,231,0.4)]">
+                DEPLOY TERMINAL
+            </button>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-secondary/30 w-full pt-margin-safe pb-8">
+<div class="max-w-container-max mx-auto px-gutter grid grid-cols-1 md:grid-cols-2 gap-8">
+<div>
+<div class="font-headline-md text-headline-md text-on-surface uppercase mb-4">Lumina Analytics</div>
+<p class="text-label-mono font-label-mono text-on-tertiary-fixed-variant opacity-80 max-w-xs">
+                    Obsidian Systems Division. High-frequency intelligence for sovereign institutions.
+                </p>
+</div>
+<div class="flex flex-col md:items-end justify-between gap-6">
+<div class="flex flex-wrap gap-6">
+<a class="text-label-mono font-label-mono text-on-tertiary-fixed-variant hover:text-secondary-fixed-dim transition-colors opacity-80 hover:opacity-100 transition-opacity" href="#">Privacy Protocol</a>
+<a class="text-label-mono font-label-mono text-on-tertiary-fixed-variant hover:text-secondary-fixed-dim transition-colors opacity-80 hover:opacity-100 transition-opacity" href="#">Security</a>
+<a class="text-label-mono font-label-mono text-on-tertiary-fixed-variant hover:text-secondary-fixed-dim transition-colors opacity-80 hover:opacity-100 transition-opacity" href="#">API Documentation</a>
+<a class="text-label-mono font-label-mono text-on-tertiary-fixed-variant hover:text-secondary-fixed-dim transition-colors opacity-80 hover:opacity-100 transition-opacity" href="#">Terms of Service</a>
+</div>
+<div class="text-label-mono font-label-mono text-secondary opacity-80">
+                    © 2024 Lumina Analytics. Obsidian Systems Division.
+                </div>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction: Mouse tracking glow
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.createElement('div');
+            glow.className = "fixed pointer-events-none w-64 h-64 rounded-full opacity-10 bg-primary blur-[100px] z-[-1]";
+            glow.style.left = (e.clientX - 128) + 'px';
+            glow.style.top = (e.clientY - 128) + 'px';
+            
+            // Remove previous glow if exists to keep DOM light
+            const oldGlow = document.querySelector('.cursor-glow');
+            if(oldGlow) oldGlow.remove();
+            glow.classList.add('cursor-glow');
+            document.body.appendChild(glow);
+        });
+    </script>
+</body></html>
