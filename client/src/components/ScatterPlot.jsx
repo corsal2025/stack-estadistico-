@@ -79,11 +79,29 @@ export default function ScatterPlot({ data }) {
   const handleMouseEnter = (e, item) => {
     const x = getX(item.date);
     const y = getY(item.avgLeadTime);
+    const tooltipWidth = 200;
+    const tooltipHeight = 90;
+    const padding = 10;
+
+    let tooltipX = x + 16;
+    let tooltipY = y - 40;
+    let position = 'bottom-right';
+
+    // Detect if tooltip would go off-screen and reposition
+    if (tooltipX + tooltipWidth + padding > width) {
+      tooltipX = x - tooltipWidth - 16;
+      position = 'bottom-left';
+    }
+    if (tooltipY - tooltipHeight < 0) {
+      tooltipY = y + 40;
+      position = position === 'bottom-left' ? 'top-left' : 'top-right';
+    }
 
     setTooltip({
       item,
-      x: x + 16,
-      y: y - 40
+      x: Math.max(padding, Math.min(tooltipX, width - tooltipWidth - padding)),
+      y: Math.max(padding, tooltipY),
+      position
     });
   };
 

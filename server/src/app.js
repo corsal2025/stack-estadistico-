@@ -5,10 +5,13 @@ import excelRoutes from './routes/excelRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3005';
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Habilitar CORS para permitir llamadas desde el frontend de React (puerto 5173 o puerto del cliente)
+// CORS configuration: whitelist specific origin or allow all in development
 app.use(cors({
-    origin: '*' // Permite conexiones locales de cualquier cliente durante desarrollo
+    origin: isDevelopment ? '*' : CORS_ORIGIN,
+    credentials: true
 }));
 
 app.use(express.json());
