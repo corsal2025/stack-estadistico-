@@ -30,7 +30,41 @@ function KpiValueCounter({ value, suffix = "", className = "", style = {} }) {
   return <span ref={elementRef} className={className} style={{ fontFamily: 'var(--font-mono)', ...style }}>{Math.round(value).toLocaleString("es-ES")}{suffix}</span>;
 }
 
-export default function SummaryCards({ stats }) {
+export default function SummaryCards({ stats, loading }) {
+  if (loading) {
+    return (
+      <section className="bento-monitoring-section" aria-label="Panel Bento de Monitoreo en Tiempo Real">
+        <div className="bento-monitoring-title-container">
+          <h2 className="bento-monitoring-title" style={{ display: 'flex', alignItems: 'center', height: '28px' }}>
+            <span className="skeleton-line skeleton-title" style={{ width: '220px', height: '18px' }}></span>
+          </h2>
+          <div className="bento-monitoring-line"></div>
+        </div>
+
+        <div className="bento-monitoring-grid">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bento-card bento-card-skeleton shimmer">
+              <div className="bento-card-top">
+                <div className="skeleton-circle"></div>
+                <div className="skeleton-badge"></div>
+              </div>
+
+              <div className="bento-card-middle" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="skeleton-line skeleton-heading" style={{ height: '18px' }}></div>
+                <div className="skeleton-line skeleton-desc" style={{ height: '12px', width: '90%' }}></div>
+              </div>
+
+              <div className="bento-card-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '12px' }}>
+                <div className="skeleton-line skeleton-indicator" style={{ width: '80px', height: '12px' }}></div>
+                <div className="skeleton-line skeleton-value" style={{ width: '90px', height: '24px' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   if (!stats) return null;
 
   const aprRate = stats.total > 0 ? ((stats.otorgados / stats.total) * 100).toFixed(1) : 0;

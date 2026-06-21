@@ -1,10 +1,16 @@
 import xlsx from 'xlsx';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const EXCEL_PATH = path.resolve('../OTROS/DETALLE CARPETAS DEPTO. LICENCIAS DE CONDUCIR 2026.xlsx');
-const DB_DIR = path.resolve('../data');
-const DB_PATH = path.resolve('../data/db.json');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '../../../');
+
+const EXCEL_PATH = path.resolve(PROJECT_ROOT, 'OTROS/DETALLE CARPETAS DEPTO. LICENCIAS DE CONDUCIR 2026.xlsx');
+const DB_DIR = path.resolve(PROJECT_ROOT, 'data');
+const DB_PATH = path.resolve(PROJECT_ROOT, 'data/db.json');
+const UPLOADS_DIR = path.resolve(PROJECT_ROOT, 'data/uploads');
 
 // Caché en memoria de los registros procesados
 let dbCache = [];
@@ -62,113 +68,7 @@ export function initDatabase() {
         }
 
         const workbook = xlsx.readFile(EXCEL_PATH);
-        const sheetNames = workbook.SheetNames;
-        
-        let allRecords = [];
-
-        // Hojas que queremos omitir (ej. plantillas, correos, etc.)
-        const skipSheets = [
-            'PLANTILLA MODELO AV. ARGENTINA',
-            'PLANTILLA MODELO PLACILLA',
-            'PLANTILLA MODELO MERC. PUERTO',
-            'ESCANEADAS Y SUBIDAS',
-            'CORREOS CAMBIO DE DOMICLIO'
-        ];
-
-        sheetNames.forEach(sheetName => {
-            if (skipSheets.includes(sheetName)) return;
-
-            const worksheet = workbook.Sheets[sheetName];
-            // Obtener datos crudos
-            const rawRows = xlsx.utils.sheet_to_json(worksheet, { defval: "" });
-
-            if (rawRows.length < 2) return; // Omitir si no hay datos
-
-            // Detectar el mapeo de columnas basándose en la primera fila de cabeceras en las hojas
-            // O mapear directamente según la estructura física de celdas
-            const headers = rawRows[0];
-            
-            // La fila 0 es la cabecera real en español. Procesamos a partir de la fila 1
-            const dataRows = rawRows.slice(1);
-
-            // Determinar la oficina basándose en el nombre de la hoja
-            let defaultOffice = 'AV. ARGENTINA';
-            if (sheetName.toUpperCase().includes('PLACILLA')) {
-                defaultOffice = 'PLACILLA';
-            } else if (sheetName.toUpperCase().includes('PUERTO') || sheetName.toUpperCase().includes('MERC.')) {
-                defaultOffice = 'MERCADO PUERTO';
-            }
-
-            // Determinar el mes
-            const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO'];
-            let recordMonth = 'ENERO';
-            for (let m of months) {
-                if (sheetName.toUpperCase().includes(m)) {
-                    recordMonth = m;
-                    break;
-                }
-            }
-
-            dataRows.forEach((row, rowIndex) => {
-                // Leer valores de columnas basadas en llaves por defecto (__EMPTY_X)
-                const citationDateRaw = row['__EMPTY'];
-                const uploadDateRaw = row['__EMPTY_1'];
-                const lastFolderDateRaw = row['__EMPTY_2'];
-                
-                // Mapear Fechas
-                const citationDate = excelDateToISO(citationDateRaw);
-                const uploadDate = excelDateToISO(uploadDateRaw);
-                const lastFolderDate = excelDateToISO(lastFolderDateRaw);
-                
-                // Mapear Textos
-                const name = String(row['__EMPTY_3'] || '').trim();
-                const lastName = String(row['__EMPTY_4'] || '').trim();
-                const fullName = String(row['AGENDA MENSUAL  AV. ARGENTINA'] || row['AGENDA MENSUAL  PLACILLA'] || row['AGENDA MENSUAL  MERC. PUERTO'] || '').trim();
-                const rut = String(row['__EMPTY_5'] || '').trim();
-                
-                // Limpieza de Oficina
-                let officeRaw = String(row['__EMPTY_6'] || '').trim().toUpperCase();
-                let office = defaultOffice;
-                if (officeRaw.includes('PLACILLA')) office = 'PLACILLA';
-                else if (officeRaw.includes('PUERTO') || officeRaw.includes('MERC.')) office = 'MERCADO PUERTO';
-                else if (officeRaw.includes('ARGENTINA')) office = 'AV. ARGENTINA';
-
-                // Variables estadísticas
-                let moral = String(row['__EMPTY_7'] || '').trim().toUpperCase();
-                if (!moral) moral = 'NORMAL';
-                
-                let folderStatus = String(row['__EMPTY_8'] || '').trim().toUpperCase();
-                if (!folderStatus) folderStatus = 'SIN ESPECIFICAR';
-
-                let decision = String(row['__EMPTY_9'] || '').trim().toUpperCase();
-                if (!decision) {
-                    decision = 'PENDIENTE';
-                } else if (decision.includes('OTORGADO')) {
-                    decision = 'OTORGADO';
-                } else if (decision.includes('DENEGADO') || decision.includes('RECHAZADO')) {
-                    decision = 'DENEGADO';
-                }
-
-                // Lead time
-                const leadTime = calculateLeadTime(citationDate, uploadDate);
-
-                // Solo agregar si hay datos mínimos válidos
-                if (rut || fullName || citationDate) {
-                    allRecords.push({
-                        id: `${sheetName.replace(/\s+/g, '-')}-${rowIndex}`,
-                        month: recordMonth,
-                        office,
-                        citationDate,
-                        uploadDate,
-                        lastFolderDate,
-                        moral,
-                        folderStatus,
-                        decision,
-                        leadTime
-                    });
-                }
-            });
-        });
+        const allRecords = parseWorkbook(workbook);
 
         // Guardar físicamente
         fs.writeFileSync(DB_PATH, JSON.stringify(allRecords, null, 2), 'utf8');
@@ -178,6 +78,148 @@ export function initDatabase() {
         console.error('Error al inicializar la base de datos local:', e);
     }
 }
+
+/**
+ * Parsea un workbook xlsx en memoria y retorna el array de registros normalizados.
+ * Función reutilizada tanto por initDatabase() como por uploadAndReprocessExcel().
+ */
+function parseWorkbook(workbook) {
+    const skipSheets = [
+        'PLANTILLA MODELO AV. ARGENTINA',
+        'PLANTILLA MODELO PLACILLA',
+        'PLANTILLA MODELO MERC. PUERTO',
+        'ESCANEADAS Y SUBIDAS',
+        'CORREOS CAMBIO DE DOMICLIO'
+    ];
+
+    const allRecords = [];
+
+    workbook.SheetNames.forEach(sheetName => {
+        if (skipSheets.includes(sheetName)) return;
+
+        const worksheet = workbook.Sheets[sheetName];
+        const rawRows = xlsx.utils.sheet_to_json(worksheet, { defval: '' });
+        if (rawRows.length < 2) return;
+
+        const dataRows = rawRows.slice(1);
+
+        let defaultOffice = 'AV. ARGENTINA';
+        if (sheetName.toUpperCase().includes('PLACILLA')) defaultOffice = 'PLACILLA';
+        else if (sheetName.toUpperCase().includes('PUERTO') || sheetName.toUpperCase().includes('MERC.')) defaultOffice = 'MERCADO PUERTO';
+
+        const monthNames = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO'];
+        let recordMonth = 'ENERO';
+        for (const m of monthNames) {
+            if (sheetName.toUpperCase().includes(m)) { recordMonth = m; break; }
+        }
+
+        dataRows.forEach((row, rowIndex) => {
+            const citationDate   = excelDateToISO(row['__EMPTY']);
+            const uploadDate     = excelDateToISO(row['__EMPTY_1']);
+            const lastFolderDate = excelDateToISO(row['__EMPTY_2']);
+            const fullName = String(row['AGENDA MENSUAL  AV. ARGENTINA'] || row['AGENDA MENSUAL  PLACILLA'] || row['AGENDA MENSUAL  MERC. PUERTO'] || '').trim();
+            const rut = String(row['__EMPTY_5'] || '').trim();
+
+            let officeRaw = String(row['__EMPTY_6'] || '').trim().toUpperCase();
+            let office = defaultOffice;
+            if (officeRaw.includes('PLACILLA')) office = 'PLACILLA';
+            else if (officeRaw.includes('PUERTO') || officeRaw.includes('MERC.')) office = 'MERCADO PUERTO';
+            else if (officeRaw.includes('ARGENTINA')) office = 'AV. ARGENTINA';
+
+            let moral = String(row['__EMPTY_7'] || '').trim().toUpperCase() || 'NORMAL';
+            let folderStatus = String(row['__EMPTY_8'] || '').trim().toUpperCase() || 'SIN ESPECIFICAR';
+
+            let decision = String(row['__EMPTY_9'] || '').trim().toUpperCase();
+            if (!decision) decision = 'PENDIENTE';
+            else if (decision.includes('OTORGADO')) decision = 'OTORGADO';
+            else if (decision.includes('DENEGADO') || decision.includes('RECHAZADO')) decision = 'DENEGADO';
+
+            const leadTime = calculateLeadTime(citationDate, uploadDate);
+
+            if (rut || fullName || citationDate) {
+                allRecords.push({
+                    id: `${sheetName.replace(/\s+/g, '-')}-${rowIndex}`,
+                    month: recordMonth,
+                    office,
+                    citationDate,
+                    uploadDate,
+                    lastFolderDate,
+                    moral,
+                    folderStatus,
+                    decision,
+                    leadTime
+                });
+            }
+        });
+    });
+
+    return allRecords;
+}
+
+/**
+ * API: Upload y reprocesamiento de un nuevo archivo Excel
+ * Recibe el buffer del archivo vía multer (req.file.buffer)
+ */
+export const uploadAndReprocessExcel = (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se recibió ningún archivo Excel.' });
+        }
+
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        if (!['.xlsx', '.xls'].includes(ext)) {
+            return res.status(400).json({ error: 'Formato no válido. Solo se aceptan archivos .xlsx o .xls.' });
+        }
+
+        console.log(`📁 Procesando Excel subido: ${req.file.originalname} (${req.file.size} bytes)`);
+
+        // Guardar copia del archivo subido
+        if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        const uploadedPath = path.join(UPLOADS_DIR, `upload_${Date.now()}_${req.file.originalname}`);
+        fs.writeFileSync(uploadedPath, req.file.buffer);
+
+        // Parsear desde el buffer en memoria (más rápido que leer del disco)
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const records = parseWorkbook(workbook);
+
+        if (records.length === 0) {
+            return res.status(422).json({
+                error: 'El archivo no contiene registros válidos. Verificá que la estructura de hojas y columnas sea la correcta.'
+            });
+        }
+
+        // Actualizar caché y db.json
+        dbCache = records;
+        fs.writeFileSync(DB_PATH, JSON.stringify(records, null, 2), 'utf8');
+
+        console.log(`✅ Reprocesamiento exitoso: ${records.length} registros cargados desde "${req.file.originalname}"`);
+
+        // Retornar resumen inmediato para que el frontend pueda refrescar
+        const total = records.length;
+        const otorgados = records.filter(r => r.decision === 'OTORGADO').length;
+        const denegados = records.filter(r => r.decision === 'DENEGADO').length;
+        const pendientes = records.filter(r => r.decision === 'PENDIENTE').length;
+        const moralAlerts = records.filter(r => r.moral === 'ALERTADA' || r.moral === 'REVISAR').length;
+        const validLT = records.filter(r => r.leadTime !== null).map(r => r.leadTime);
+        const avgLeadTime = validLT.length > 0
+            ? Math.round(validLT.reduce((a, b) => a + b, 0) / validLT.length) : 0;
+        const offices = [...new Set(records.map(r => r.office))];
+        const months = [...new Set(records.map(r => r.month))];
+
+        res.json({
+            success: true,
+            filename: req.file.originalname,
+            records: total,
+            summary: { total, otorgados, denegados, pendientes, moralAlerts, avgLeadTime },
+            offices,
+            months,
+            message: `Se procesaron ${total.toLocaleString('es-ES')} registros exitosamente.`
+        });
+    } catch (err) {
+        console.error('❌ Error al procesar el Excel subido:', err);
+        res.status(500).json({ error: 'Error interno al procesar el archivo. Revisá los logs del servidor.' });
+    }
+};
 
 /**
  * Retorna todos los datos filtrados por mes y oficina.
@@ -346,4 +388,120 @@ export const getScatterData = (req, res) => {
     }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.json(data);
+};
+
+/**
+ * API: Heatmap de actividad diaria (día de la semana × mes)
+ */
+export const getHeatmapData = (req, res) => {
+    const { office } = req.query;
+    const records = getFilteredRecords('all', office);
+
+    const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO'];
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+    // Build a month × dayOfWeek matrix
+    const matrix = [];
+    months.forEach(month => {
+        days.forEach((day, dayIndex) => {
+            const count = records.filter(r => {
+                if (r.month !== month) return false;
+                if (!r.citationDate) return false;
+                const d = new Date(r.citationDate);
+                return d.getDay() === dayIndex;
+            }).length;
+            matrix.push({ month, day, dayIndex, count });
+        });
+    });
+
+    res.json(matrix);
+};
+
+/**
+ * API: Radar Chart — 5 KPIs normalizados por sede
+ * Axes: volumen, aprobacion, velocidad, puntualidad, integridad
+ */
+export const getRadarData = (req, res) => {
+    const { month } = req.query;
+    const records = getFilteredRecords(month, 'all');
+
+    const offices = ['AV. ARGENTINA', 'PLACILLA', 'MERCADO PUERTO'];
+    const FAST_THRESHOLD = 5; // días considerados "puntual"
+
+    const raw = offices.map(off => {
+        const offRecs = records.filter(r => r.office === off);
+        const total = offRecs.length || 1;
+        const otorgados = offRecs.filter(r => r.decision === 'OTORGADO').length;
+        const moralAlerts = offRecs.filter(r => r.moral === 'ALERTADA' || r.moral === 'REVISAR').length;
+        const validLT = offRecs.filter(r => r.leadTime !== null).map(r => r.leadTime);
+        const avgLT = validLT.length > 0
+            ? validLT.reduce((a, b) => a + b, 0) / validLT.length
+            : 15;
+        const fastCount = validLT.filter(lt => lt <= FAST_THRESHOLD).length;
+
+        return {
+            office: off,
+            totalRaw: total,
+            aprobacion: otorgados / total,
+            velocidad: Math.max(0, 1 - (avgLT / 20)),   // 20 días = límite máximo
+            puntualidad: fastCount / (validLT.length || 1),
+            integridad: 1 - (moralAlerts / total)
+        };
+    });
+
+    // Normalize volumen relative to max
+    const maxVol = Math.max(...raw.map(r => r.totalRaw));
+    const data = raw.map(r => ({
+        office: r.office,
+        volumen: maxVol > 0 ? r.totalRaw / maxVol : 0,
+        aprobacion: r.aprobacion,
+        velocidad: r.velocidad,
+        puntualidad: r.puntualidad,
+        integridad: r.integridad
+    }));
+
+    res.json(data);
+};
+
+/**
+ * API: Restablece los datos originales eliminando db.json y volviendo a procesar la planilla madre.
+ */
+export const resetDatabase = (req, res) => {
+    try {
+        console.log('🔄 Restableciendo base de datos al Excel original...');
+        
+        // 1. Eliminar db.json si existe
+        if (fs.existsSync(DB_PATH)) {
+            fs.unlinkSync(DB_PATH);
+        }
+
+        // 2. Volver a inicializar
+        initDatabase();
+
+        console.log(`✅ Base de datos restablecida. Registros en caché: ${dbCache.length}`);
+
+        // 3. Devolver respuesta de éxito con los datos originales
+        const total = dbCache.length;
+        const otorgados = dbCache.filter(r => r.decision === 'OTORGADO').length;
+        const denegados = dbCache.filter(r => r.decision === 'DENEGADO').length;
+        const pendientes = dbCache.filter(r => r.decision === 'PENDIENTE').length;
+        const moralAlerts = dbCache.filter(r => r.moral === 'ALERTADA' || r.moral === 'REVISAR').length;
+        const validLT = dbCache.filter(r => r.leadTime !== null).map(r => r.leadTime);
+        const avgLeadTime = validLT.length > 0
+            ? Math.round(validLT.reduce((a, b) => a + b, 0) / validLT.length) : 0;
+        const offices = [...new Set(dbCache.map(r => r.office))];
+        const months = [...new Set(dbCache.map(r => r.month))];
+
+        res.json({
+            success: true,
+            records: total,
+            summary: { total, otorgados, denegados, pendientes, moralAlerts, avgLeadTime },
+            offices,
+            months,
+            message: 'Se han restablecido los datos originales de la planilla madre exitosamente.'
+        });
+    } catch (err) {
+        console.error('❌ Error al restablecer la base de datos:', err);
+        res.status(500).json({ error: 'Error interno al restablecer los datos. Revisá los logs.' });
+    }
 };

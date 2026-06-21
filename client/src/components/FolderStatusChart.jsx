@@ -9,7 +9,7 @@ export default function FolderStatusChart({ data }) {
   const [viewMode, setViewMode] = useState('consolidated'); // 'consolidated' o 'detailed'
 
   // Dimensiones del gráfico optimizadas para visualización vertical con texto superior
-  const width = 600;
+  const width = 850;
   const paddingLeft = 20;
   const paddingRight = 40;
   const paddingTop = 10;
