@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm install
+
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: client/dist
+          retention-days: 7
+
+  build-backend:
+    name: Verify Backend Starts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install
+
+      - name: Verify server starts without error
+        working-directory: server
+        run: |
+          # Start server in background, wait for it to be ready, then kill it
+          timeout 15 node src/app.js &
+          SERVER_PID=$!
+          sleep 5
+          # Check if the process is still alive (started successfully)
+          if kill -0 $SERVER_PID 2>/dev/null; then
+            echo "Server started successfully"
+            kill $SERVER_PID
+          else
+            echo "Server failed to start"
+            exit 1
+          fi
+        env:
+          PORT: 3002
+          NODE_ENV: test
+          CORS_ORIGIN: http://localhost:3005

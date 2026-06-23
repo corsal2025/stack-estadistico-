@@ -60,10 +60,33 @@ Luego crea un Pull Request en GitHub.
 
 ## Testing
 
-No hay tests configurados aún. Si añades tests:
+Run the full test suite before submitting a PR:
+
 ```bash
-npm run test
+# All tests (backend + frontend)
+npm run test:all
+
+# Backend only
+npm run test:server
+
+# Frontend only
+npm run test:client
 ```
+
+Both test suites must pass. The CI pipeline will run them automatically on every push and PR.
+
+## CI/CD Pipeline
+
+Every push and pull request triggers the automated pipeline:
+
+| Workflow | Trigger | What it checks |
+|----------|---------|----------------|
+| Tests    | push, PR | vitest backend + frontend |
+| Lint     | push, PR | ESLint on client source |
+| Build    | push to master | vite build + server startup |
+| Deploy   | push to master | placeholder (configure when ready) |
+
+A green CI status is required before merging to master.
 
 ## Performance
 

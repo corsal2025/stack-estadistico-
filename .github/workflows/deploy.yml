@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    # Only run after the build workflow succeeds
+    # In a real setup, add: needs: [build] and reference build.yml via workflow_run
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy placeholder
+        run: |
+          echo "Deployment would run here."
+          echo "Configure your deployment target (VPS, Railway, Fly.io, etc.) and add the real steps."
+          echo ""
+          echo "Example targets:"
+          echo "  - Railway: railway up --service backend"
+          echo "  - Fly.io:  flyctl deploy --remote-only"
+          echo "  - VPS:     ssh user@host 'cd /app && git pull && npm install && pm2 restart app'"
+          echo ""
+          echo "Add secrets in: GitHub repo → Settings → Secrets and variables → Actions"
+
+      # Uncomment and configure one of these when ready to deploy:
+      #
+      # --- Railway ---
+      # - name: Deploy to Railway
+      #   uses: bervProject/railway-deploy@main
+      #   with:
+      #     railway_token: ${{ secrets.RAILWAY_TOKEN }}
+      #     service: licentia-backend
+      #
+      # --- Fly.io ---
+      # - name: Deploy to Fly.io
+      #   uses: superfly/flyctl-actions/setup-flyctl@master
+      # - run: flyctl deploy --remote-only
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      #
+      # --- VPS via SSH ---
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     script: |
+      #       cd /var/www/licentia
+      #       git pull origin master
+      #       cd server && npm install --production && pm2 restart licentia-backend

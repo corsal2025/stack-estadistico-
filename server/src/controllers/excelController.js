@@ -2,12 +2,14 @@ import xlsx from 'xlsx';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../../');
 
-const EXCEL_PATH = path.resolve(PROJECT_ROOT, 'OTROS/DETALLE CARPETAS DEPTO. LICENCIAS DE CONDUCIR 2026.xlsx');
+const EXCEL_PATH = process.env.EXCEL_PATH || path.resolve(PROJECT_ROOT, 'OTROS/DETALLE CARPETAS DEPTO. LICENCIAS DE CONDUCIR 2026.xlsx');
 const DB_DIR = path.resolve(PROJECT_ROOT, 'data');
 const DB_PATH = path.resolve(PROJECT_ROOT, 'data/db.json');
 const UPLOADS_DIR = path.resolve(PROJECT_ROOT, 'data/uploads');
@@ -16,24 +18,75 @@ const UPLOADS_DIR = path.resolve(PROJECT_ROOT, 'data/uploads');
 let dbCache = [];
 
 /**
- * Convierte un número serial de fecha de Excel a una cadena ISO AAAA-MM-DD.
+ * Normaliza un RUT chileno a formato estándar cuerpo-DV (ej. 12345678-K).
  */
-function excelDateToISO(serial) {
-    if (!serial || isNaN(serial)) return null;
-    try {
-        // Corrección de época de Excel (1 de enero de 1900 es el día 1)
-        const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
-        if (isNaN(date.getTime())) return null;
-        return date.toISOString().split('T')[0];
-    } catch {
-        return null;
+export function normalizeRut(rutStr) {
+    if (!rutStr) return '';
+    const clean = String(rutStr).replace(/[^0-9kK]/g, '').toUpperCase();
+    if (clean.length < 2) return clean;
+    const body = clean.slice(0, -1);
+    const dv = clean.slice(-1);
+    return `${body}-${dv}`;
+}
+
+/**
+ * Convierte un número serial de fecha de Excel, un objeto Date o un string de fecha a una cadena ISO AAAA-MM-DD.
+ */
+export function excelDateToISO(serial) {
+    if (!serial) return null;
+
+    // Si ya es un objeto Date
+    if (serial instanceof Date) {
+        if (isNaN(serial.getTime())) return null;
+        return serial.toISOString().split('T')[0];
     }
+
+    // Si es un número serial de Excel (o string numérico que representa el serial)
+    if (!isNaN(serial) && typeof serial !== 'object') {
+        try {
+            const num = Number(serial);
+            if (num <= 0) return null;
+            // Corrección de época de Excel (1 de enero de 1900 es el día 1)
+            const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+            if (isNaN(date.getTime())) return null;
+            return date.toISOString().split('T')[0];
+        } catch {
+            return null;
+        }
+    }
+
+    // Si es un string de fecha (ej. "2026-03-15", "15/03/2026", "15-03-2026")
+    if (typeof serial === 'string') {
+        const cleaned = serial.trim();
+        if (!cleaned) return null;
+
+        // Intentar parsear formato DD/MM/AAAA o DD-MM-AAAA
+        const dmyPattern = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/;
+        const match = cleaned.match(dmyPattern);
+        if (match) {
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10) - 1; // 0-indexed
+            const year = parseInt(match[3], 10);
+            const date = new Date(year, month, day);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+        }
+
+        // Parseo directo estándar de JS Date
+        const parsed = new Date(cleaned);
+        if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString().split('T')[0];
+        }
+    }
+
+    return null;
 }
 
 /**
  * Calcula la diferencia de días entre dos fechas (AAAA-MM-DD).
  */
-function calculateLeadTime(startDateStr, endDateStr) {
+export function calculateLeadTime(startDateStr, endDateStr) {
     if (!startDateStr || !endDateStr) return null;
     const start = new Date(startDateStr);
     const end = new Date(endDateStr);
@@ -54,16 +107,16 @@ export function initDatabase() {
         }
 
         if (fs.existsSync(DB_PATH)) {
-            console.log('Base de datos JSON existente encontrada en:', DB_PATH);
+            logger.info('Existing JSON database found', { path: DB_PATH });
             const raw = fs.readFileSync(DB_PATH, 'utf8');
             dbCache = JSON.parse(raw);
-            console.log(`Base de datos cargada: ${dbCache.length} registros en memoria.`);
+            logger.info(`Database loaded: ${dbCache.length} records in memory.`);
             return;
         }
 
-        console.log('Inicializando procesamiento del Excel madre...');
+        logger.info('Initializing Excel parsing...');
         if (!fs.existsSync(EXCEL_PATH)) {
-            console.error(`Error crítico: El archivo Excel no existe en ${EXCEL_PATH}`);
+            logger.error(`Critical error: Excel file not found at ${EXCEL_PATH}`);
             return;
         }
 
@@ -73,9 +126,9 @@ export function initDatabase() {
         // Guardar físicamente
         fs.writeFileSync(DB_PATH, JSON.stringify(allRecords, null, 2), 'utf8');
         dbCache = allRecords;
-        console.log(`Procesamiento finalizado. Guardados ${dbCache.length} registros en la base de datos.`);
+        logger.info(`Processing complete. Saved ${dbCache.length} records to database.`);
     } catch (e) {
-        console.error('Error al inicializar la base de datos local:', e);
+        logger.error('Error initializing local database', { message: e.message, stack: e.stack });
     }
 }
 
@@ -171,7 +224,10 @@ export const uploadAndReprocessExcel = (req, res) => {
             return res.status(400).json({ error: 'Formato no válido. Solo se aceptan archivos .xlsx o .xls.' });
         }
 
-        console.log(`📁 Procesando Excel subido: ${req.file.originalname} (${req.file.size} bytes)`);
+        logger.info('Processing uploaded Excel file', {
+            filename: req.file.originalname,
+            size: req.file.size
+        });
 
         // Guardar copia del archivo subido
         if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -192,7 +248,10 @@ export const uploadAndReprocessExcel = (req, res) => {
         dbCache = records;
         fs.writeFileSync(DB_PATH, JSON.stringify(records, null, 2), 'utf8');
 
-        console.log(`✅ Reprocesamiento exitoso: ${records.length} registros cargados desde "${req.file.originalname}"`);
+        logger.info('Excel reprocessing successful', {
+            filename: req.file.originalname,
+            records: records.length
+        });
 
         // Retornar resumen inmediato para que el frontend pueda refrescar
         const total = records.length;
@@ -216,8 +275,16 @@ export const uploadAndReprocessExcel = (req, res) => {
             message: `Se procesaron ${total.toLocaleString('es-ES')} registros exitosamente.`
         });
     } catch (err) {
-        console.error('❌ Error al procesar el Excel subido:', err);
-        res.status(500).json({ error: 'Error interno al procesar el archivo. Revisá los logs del servidor.' });
+        const traceId = randomUUID();
+        logger.error('Error processing uploaded Excel file', {
+            traceId,
+            message: err.message,
+            stack: err.stack
+        });
+        res.status(500).json({
+            error: 'Error interno al procesar el archivo. Revisá los logs del servidor.',
+            traceId
+        });
     }
 };
 
@@ -238,7 +305,8 @@ function getFilteredRecords(month, office) {
 /**
  * API: Summary stats (Cards KPIs)
  */
-export const getSummaryStats = (req, res) => {
+export const getSummaryStats = (req, res, next) => {
+    try {
     const { month, office } = req.query;
     const records = getFilteredRecords(month, office);
 
@@ -270,12 +338,14 @@ export const getSummaryStats = (req, res) => {
         moralEffectiveness,
         avgLeadTime
     });
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Agrupaciones mensuales (Tendencias)
  */
-export const getMonthlyTrends = (req, res) => {
+export const getMonthlyTrends = (req, res, next) => {
+    try {
     const { office } = req.query;
     const records = getFilteredRecords('all', office);
 
@@ -291,23 +361,25 @@ export const getMonthlyTrends = (req, res) => {
     });
 
     res.json(data);
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Distribución por Sede/Oficina
  */
-export const getOfficeDistribution = (req, res) => {
+export const getOfficeDistribution = (req, res, next) => {
+    try {
     const { month } = req.query;
     const records = getFilteredRecords(month, 'all');
 
     const offices = ['AV. ARGENTINA', 'PLACILLA', 'MERCADO PUERTO'];
     const data = offices.map(off => {
         const offRecs = records.filter(r => r.office === off);
-        
+
         // Calcular lead time promedio específico de esta sede
         const validLeadTimes = offRecs.filter(r => r.leadTime !== null).map(r => r.leadTime);
-        const avgLeadTime = validLeadTimes.length > 0 
-            ? Math.round(validLeadTimes.reduce((acc, curr) => acc + curr, 0) / validLeadTimes.length) 
+        const avgLeadTime = validLeadTimes.length > 0
+            ? Math.round(validLeadTimes.reduce((acc, curr) => acc + curr, 0) / validLeadTimes.length)
             : 0;
 
         return {
@@ -320,12 +392,14 @@ export const getOfficeDistribution = (req, res) => {
     });
 
     res.json(data);
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Distribución del Estado de la Carpeta (Histograma)
  */
-export const getFolderStatusDistribution = (req, res) => {
+export const getFolderStatusDistribution = (req, res, next) => {
+    try {
     const { month, office } = req.query;
     const records = getFilteredRecords(month, office);
 
@@ -343,12 +417,14 @@ export const getFolderStatusDistribution = (req, res) => {
     })).sort((a, b) => b.value - a.value);
 
     res.json(data);
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Datos del Histograma de Dispersión (Scatter Plot)
  */
-export const getScatterData = (req, res) => {
+export const getScatterData = (req, res, next) => {
+    try {
     const { month, office } = req.query;
     const records = getFilteredRecords(month, office);
 
@@ -388,12 +464,14 @@ export const getScatterData = (req, res) => {
     }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.json(data);
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Heatmap de actividad diaria (día de la semana × mes)
  */
-export const getHeatmapData = (req, res) => {
+export const getHeatmapData = (req, res, next) => {
+    try {
     const { office } = req.query;
     const records = getFilteredRecords('all', office);
 
@@ -415,13 +493,15 @@ export const getHeatmapData = (req, res) => {
     });
 
     res.json(matrix);
+    } catch (err) { next(err); }
 };
 
 /**
  * API: Radar Chart — 5 KPIs normalizados por sede
  * Axes: volumen, aprobacion, velocidad, puntualidad, integridad
  */
-export const getRadarData = (req, res) => {
+export const getRadarData = (req, res, next) => {
+    try {
     const { month } = req.query;
     const records = getFilteredRecords(month, 'all');
 
@@ -461,7 +541,16 @@ export const getRadarData = (req, res) => {
     }));
 
     res.json(data);
+    } catch (err) { next(err); }
 };
+
+/**
+ * Test escape hatch: injects data directly into the in-memory cache.
+ * Only usable when VITEST env var is present (vitest sets it automatically).
+ */
+export function _setDbCacheForTesting(data) {
+    dbCache = data;
+}
 
 /**
  * API: Restablece los datos originales eliminando db.json y volviendo a procesar la planilla madre.
@@ -469,7 +558,7 @@ export const getRadarData = (req, res) => {
 export const resetDatabase = (req, res) => {
     try {
         console.log('🔄 Restableciendo base de datos al Excel original...');
-        
+
         // 1. Eliminar db.json si existe
         if (fs.existsSync(DB_PATH)) {
             fs.unlinkSync(DB_PATH);
@@ -478,7 +567,7 @@ export const resetDatabase = (req, res) => {
         // 2. Volver a inicializar
         initDatabase();
 
-        console.log(`✅ Base de datos restablecida. Registros en caché: ${dbCache.length}`);
+        logger.info('Database reset successful', { records: dbCache.length });
 
         // 3. Devolver respuesta de éxito con los datos originales
         const total = dbCache.length;
@@ -501,7 +590,15 @@ export const resetDatabase = (req, res) => {
             message: 'Se han restablecido los datos originales de la planilla madre exitosamente.'
         });
     } catch (err) {
-        console.error('❌ Error al restablecer la base de datos:', err);
-        res.status(500).json({ error: 'Error interno al restablecer los datos. Revisá los logs.' });
+        const traceId = randomUUID();
+        logger.error('Error resetting database', {
+            traceId,
+            message: err.message,
+            stack: err.stack
+        });
+        res.status(500).json({
+            error: 'Error interno al restablecer los datos. Revisá los logs.',
+            traceId
+        });
     }
 };

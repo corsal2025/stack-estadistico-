@@ -26,6 +26,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Logs (Winston structured logs)
+logs/
+server/logs/
+
 # IDE
 .vscode/
 .idea/
@@ -39,3 +43,4 @@ Thumbs.db
 # Archivos grandes (Excel fuente)
 OTROS/*.xlsx
 !OTROS/DETALLE\ CARPETAS\ DEPTO.\ LICENCIAS\ DE\ CONDUCIR\ 2026.xlsx
+node_modules

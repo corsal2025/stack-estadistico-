@@ -10,7 +10,13 @@
     "client:dev": "cd client && npm run dev",
     "server:start": "cd server && npm start",
     "client:build": "cd client && npm run build",
-    "build": "npm run client:build"
+    "build": "npm run client:build",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
+    "test:all": "npm run test:server && npm run test:client",
+    "test:coverage:server": "cd server && npm run test:coverage",
+    "test:coverage:client": "cd client && npm run test:coverage",
+    "test:coverage:all": "npm run test:coverage:server && npm run test:coverage:client"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

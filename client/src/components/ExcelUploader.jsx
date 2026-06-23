@@ -28,12 +28,23 @@ export default function ExcelUploader({ onUploadSuccess }) {
     }
   }, { dependencies: [isDragging], scope: containerRef });
 
+  const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+
   const processFile = useCallback(async (file) => {
     if (!file) return;
+
+    // Client-side: validate file type
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['xlsx', 'xls'].includes(ext)) {
       setStatus('error');
-      setErrorMsg('Solo se aceptan archivos .xlsx o .xls');
+      setErrorMsg('Formato no válido. Solo se aceptan archivos .xlsx o .xls');
+      return;
+    }
+
+    // Client-side: validate file size (< 50 MB)
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setStatus('error');
+      setErrorMsg(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El máximo permitido es 50 MB.`);
       return;
     }
 

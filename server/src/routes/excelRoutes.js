@@ -11,6 +11,7 @@ import {
     uploadAndReprocessExcel,
     resetDatabase
 } from '../controllers/excelController.js';
+import { validateStatsQuery } from '../middleware/validateRequest.js';
 
 const router = express.Router();
 
@@ -24,14 +25,14 @@ const upload = multer({
     }
 });
 
-// Rutas estadísticas principales
-router.get('/summary', getSummaryStats);
-router.get('/trends', getMonthlyTrends);
-router.get('/distribution', getOfficeDistribution);
-router.get('/status', getFolderStatusDistribution);
-router.get('/scatter', getScatterData);
-router.get('/heatmap', getHeatmapData);
-router.get('/radar', getRadarData);
+// Rutas estadísticas principales (validated)
+router.get('/summary', validateStatsQuery, getSummaryStats);
+router.get('/trends', validateStatsQuery, getMonthlyTrends);
+router.get('/distribution', validateStatsQuery, getOfficeDistribution);
+router.get('/status', validateStatsQuery, getFolderStatusDistribution);
+router.get('/scatter', validateStatsQuery, getScatterData);
+router.get('/heatmap', validateStatsQuery, getHeatmapData);
+router.get('/radar', validateStatsQuery, getRadarData);
 
 // Ruta de carga y reprocesamiento de Excel
 router.post('/upload', upload.single('excel'), uploadAndReprocessExcel);
