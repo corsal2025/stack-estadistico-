@@ -4,7 +4,7 @@ import gsap from 'gsap';
 
 gsap.registerPlugin(useGSAP);
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/api/stats`;
+const API_BASE_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3002'}/api/stats`;
 
 export default function ExcelUploader({ onUploadSuccess }) {
   const containerRef = useRef(null);
@@ -13,7 +13,7 @@ export default function ExcelUploader({ onUploadSuccess }) {
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [progress, setProgress] = useState(0);
-  const [resetting, setResetting] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const inputRef = useRef(null);
 
   // Glow animation when dragging
@@ -98,44 +98,44 @@ export default function ExcelUploader({ onUploadSuccess }) {
     }
   }, [onUploadSuccess]);
 
-  const handleReset = useCallback(async () => {
-    if (!window.confirm('¿Estás seguro de que querés borrar los datos subidos y restablecer la información original de la planilla madre?')) {
+  const handleClearAll = useCallback(async () => {
+    if (!window.confirm('¿Estás seguro de que querés ELIMINAR TODOS los datos del sistema? Esta acción deja el dashboard vacío. Luego podrás cargar un Excel nuevo.')) {
       return;
     }
-    
-    setResetting(true);
+
+    setClearing(true);
     setErrorMsg('');
     try {
-      const res = await fetch(`${API_BASE_URL}/reset`, {
+      const res = await fetch(`${API_BASE_URL}/clear`, {
         method: 'POST'
       });
       const data = await res.json();
-      
+
       if (!res.ok) {
-        throw new Error(data.error || 'Error al restablecer la base de datos.');
+        throw new Error(data.error || 'Error al eliminar los datos.');
       }
-      
+
       setStatus('success');
       setResult({
-        filename: 'Planilla Madre Original (Restaurada)',
+        filename: 'Sistema vaciado — listo para cargar datos nuevos',
         records: data.records,
         summary: data.summary,
         offices: data.offices,
         months: data.months
       });
-      
+
       if (onUploadSuccess) onUploadSuccess(data);
-      
+
       setTimeout(() => {
         setStatus('idle');
         setResult(null);
       }, 5000);
-      
+
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err.message || 'Error de conexión al restablecer datos.');
+      setErrorMsg(err.message || 'Error de conexión al eliminar los datos.');
     } finally {
-      setResetting(false);
+      setClearing(false);
     }
   }, [onUploadSuccess]);
 
@@ -273,23 +273,23 @@ export default function ExcelUploader({ onUploadSuccess }) {
       <div className="uploader-footer-actions">
         <button
           className="uploader-reset-btn"
-          onClick={handleReset}
-          disabled={status === 'uploading' || resetting}
+          onClick={handleClearAll}
+          disabled={status === 'uploading' || clearing}
         >
-          {resetting ? (
+          {clearing ? (
             <>
               <svg className="animate-spin text-current" style={{ marginRight: '6px' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8" strokeOpacity="0.3" />
                 <path d="M12 2 A10 10 0 0 1 22 12" strokeLinecap="round" />
               </svg>
-              <span>Restableciendo...</span>
+              <span>Eliminando...</span>
             </>
           ) : (
             <>
               <svg style={{ marginRight: '6px' }} width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              <span>Borrar datos importados y restaurar original</span>
+              <span>Eliminar todos los datos</span>
             </>
           )}
         </button>

@@ -1,6 +1,6 @@
 ﻿import { jsPDF } from 'jspdf';
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/api/stats`;
+const API_BASE_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3002'}/api/stats`;
 
 /**
  * Genera y descarga el informe estadÃ­stico en PDF (A4) â€” siempre con datos actualizados

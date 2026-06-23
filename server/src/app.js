@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initDatabase } from './controllers/excelController.js';
 import excelRoutes from './routes/excelRoutes.js';
 import swaggerRoutes from './routes/swaggerRoutes.js';
@@ -18,6 +20,10 @@ if (!process.env.PORT && !process.env.NODE_ENV) {
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+// Path to the compiled frontend (client/dist)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const clientDist = path.resolve(__dirname, '../../client/dist');
+
 // CORS — must be first (handles preflight OPTIONS before any other middleware)
 app.use(corsMiddleware);
 
@@ -25,6 +31,9 @@ app.use(express.json());
 
 // Request logging — early, before routes
 app.use(logRequests);
+
+// Serve the compiled frontend (single-server deployment)
+app.use(express.static(clientDist));
 
 // Inicializar y parsear el Excel en el arranque de la app si no existe db.json
 initDatabase();
@@ -47,6 +56,12 @@ app.use('/api-docs', swaggerRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// SPA fallback — any non-API route returns the frontend's index.html
+// so client-side routing and direct links work. Must come after all API routes.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 // Global error handler — must be last

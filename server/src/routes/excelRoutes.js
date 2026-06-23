@@ -9,7 +9,8 @@ import {
     getHeatmapData,
     getRadarData,
     uploadAndReprocessExcel,
-    resetDatabase
+    resetDatabase,
+    clearDatabase
 } from '../controllers/excelController.js';
 import { validateStatsQuery } from '../middleware/validateRequest.js';
 
@@ -39,5 +40,8 @@ router.post('/upload', upload.single('excel'), uploadAndReprocessExcel);
 
 // Ruta para restablecer base de datos a planilla madre original
 router.post('/reset', resetDatabase);
+
+// Ruta para eliminar TODOS los datos y dejar el sistema vacío
+router.post('/clear', clearDatabase);
 
 export default router;

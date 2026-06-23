@@ -553,6 +553,42 @@ export function _setDbCacheForTesting(data) {
 }
 
 /**
+ * API: Elimina TODOS los datos del sistema, dejándolo vacío (0 registros).
+ * A diferencia de resetDatabase (que restaura la planilla madre), esto deja
+ * la base en blanco para que el usuario pueda cargar datos nuevos desde cero.
+ * El estado vacío persiste entre reinicios (db.json queda como []).
+ */
+export const clearDatabase = (req, res) => {
+    try {
+        dbCache = [];
+        if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+        fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2), 'utf8');
+
+        logger.info('Database cleared by user request — system is now empty');
+
+        res.json({
+            success: true,
+            records: 0,
+            summary: { total: 0, otorgados: 0, denegados: 0, pendientes: 0, moralAlerts: 0, avgLeadTime: 0 },
+            offices: [],
+            months: [],
+            message: 'Se eliminaron todos los datos. El sistema está vacío y listo para cargar datos nuevos.'
+        });
+    } catch (err) {
+        const traceId = randomUUID();
+        logger.error('Error clearing database', {
+            traceId,
+            message: err.message,
+            stack: err.stack
+        });
+        res.status(500).json({
+            error: 'Error interno al eliminar los datos. Revisá los logs.',
+            traceId
+        });
+    }
+};
+
+/**
  * API: Restablece los datos originales eliminando db.json y volviendo a procesar la planilla madre.
  */
 export const resetDatabase = (req, res) => {
