@@ -6,6 +6,9 @@ node_modules/
 # Bases de datos y datos locales
 data/db.json
 data/*.db
+data/config.json
+# Archivos subidos por el usuario (datos personales: RUT, nombres) — nunca commitear
+data/uploads/
 
 # Variables de entorno
 .env

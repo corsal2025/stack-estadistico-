@@ -8,6 +8,9 @@ import DonutChart from './components/DonutChart';
 import FolderStatusChart from './components/FolderStatusChart';
 import ScatterPlot from './components/ScatterPlot';
 import ExcelUploader from './components/ExcelUploader';
+import DomicilioCorreoChart from './components/DomicilioCorreoChart';
+import CatastroRecords from './components/CatastroRecords';
+import DecisionBreakdown from './components/DecisionBreakdown';
 import { generatePdfReport } from './components/PdfReportGenerator';
 
 gsap.registerPlugin(useGSAP);
@@ -20,9 +23,7 @@ const THEMES = [
   { id: 'aurora-command', name: 'Aurora Command' },
   { id: 'obsidian-precision', name: 'Obsidian Precision' },
   { id: 'steel-terminal', name: 'Steel Terminal' },
-  { id: 'vanguard-flux', name: 'Vanguard Flux' },
-  { id: 'light-productivity', name: 'Productivity Pro (Claro)' },
-  { id: 'apex-flow', name: 'Apex Flow (Contraste)' }
+  { id: 'vanguard-flux', name: 'Vanguard Flux' }
 ];
 
 function App() {
@@ -30,7 +31,9 @@ function App() {
   
   // Estado de Tema
   const [currentTheme, setCurrentTheme] = useState(() => {
-    return localStorage.getItem('licentia-theme') || 'lumina-prime';
+    const saved = localStorage.getItem('licentia-theme');
+    // Fall back to the default if the saved theme is no longer in the list.
+    return THEMES.some(t => t.id === saved) ? saved : 'lumina-prime';
   });
 
   useEffect(() => {
@@ -48,6 +51,9 @@ function App() {
   const [officeDist, setOfficeDist] = useState([]);
   const [folderStatusData, setFolderStatusData] = useState([]);
   const [scatterData, setScatterData] = useState([]);
+  // Se incrementa en cada refresco (limpiar/subir) para que los componentes
+  // que traen sus propios datos (ej. comunas) vuelvan a consultar.
+  const [dataVersion, setDataVersion] = useState(0);
   
   // Estados del Ciclo de Vida
   const [loading, setLoading] = useState(true);
@@ -68,7 +74,8 @@ function App() {
           fetch(`${API_BASE_URL}/trends?office=${selectedOffice}`),
           fetch(`${API_BASE_URL}/distribution?month=${selectedMonth}`),
           fetch(`${API_BASE_URL}/status${queryParams}`),
-          fetch(`${API_BASE_URL}/scatter${queryParams}`)
+          // El histograma trae todas las sedes; el filtro de sede es local al componente.
+          fetch(`${API_BASE_URL}/scatter?month=${selectedMonth}&office=all`)
         ]);
 
         if (!resSummary.ok) throw new Error(`/summary → HTTP ${resSummary.status}`);
@@ -105,9 +112,9 @@ function App() {
 
   // Callback tras upload de Excel exitoso — refresca todos los datos
   const handleUploadSuccess = useCallback(() => {
-    // Forzar re-fetch cambiando una key temporal
-    setStats(null);
-    setLoading(true);
+    // Refrescamos SIN vaciar la pantalla: los datos viejos se mantienen hasta
+    // que llegan los nuevos, así al limpiar no se ve la página en negro.
+    // Los gráficos y tablas quedan; solo cambian los números (a 0 si se limpió).
     async function refresh() {
       try {
         const qp = `?month=${selectedMonth}&office=${selectedOffice}`;
@@ -116,7 +123,8 @@ function App() {
           fetch(`${API_BASE_URL}/trends?office=${selectedOffice}`),
           fetch(`${API_BASE_URL}/distribution?month=${selectedMonth}`),
           fetch(`${API_BASE_URL}/status${qp}`),
-          fetch(`${API_BASE_URL}/scatter${qp}`)
+          // El histograma trae todas las sedes; el filtro de sede es local al componente.
+          fetch(`${API_BASE_URL}/scatter?month=${selectedMonth}&office=all`)
         ]);
         const [dataSummary, dataTrends, dataOffice, dataStatus, dataScatter] = await Promise.all([
           resSummary.json(), resTrends.json(), resOffice.json(), resStatus.json(), resScatter.json()
@@ -126,6 +134,7 @@ function App() {
         setOfficeDist(dataOffice);
         setFolderStatusData(dataStatus);
         setScatterData(dataScatter);
+        setDataVersion(v => v + 1); // dispara el refetch de los componentes propios (comunas)
       } catch (err) {
         setError(err.message);
       } finally {
@@ -272,7 +281,7 @@ function App() {
             <path d="M10 16L14 20L22 12" stroke="#050505" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <div className="logo-text">
-            <h1>Licentia<span>.io</span></h1>
+            <h1>Licencia<span>.ai</span></h1>
           </div>
         </div>
         
@@ -285,12 +294,7 @@ function App() {
               onChange={(e) => setCurrentTheme(e.target.value)}
               className="custom-select"
               style={{
-                padding: '6px 28px 6px 12px',
-                fontSize: '0.75rem',
-                minWidth: '160px',
-                height: '32px',
-                backgroundPosition: 'right 10px center',
-                backgroundSize: '11px',
+                minWidth: '210px',
                 margin: 0
               }}
             >
@@ -346,7 +350,7 @@ function App() {
           {/* Stats Flotantes */}
           <div className="float-widget top-left">
             <div className="db-status-title">Estado de Base de Datos</div>
-            <div className="db-status-value">18,123 Reg.</div>
+            <div className="db-status-value">{stats ? stats.total.toLocaleString('es-CL') : '0'} Reg.</div>
             <div className="db-status-sub">
               <span className="status-indicator online neon-pulse-cyan"></span>
               <span>CACHÉ LOCAL ACTIVA</span>
@@ -473,7 +477,7 @@ function App() {
                 </div>
                 <div className="bento-predictive-stat-item">
                   <span className="bento-predictive-stat-label">Base de Datos</span>
-                  <span className="bento-predictive-stat-value" style={{ fontFamily: 'var(--font-mono)' }}>18,123 Reg.</span>
+                  <span className="bento-predictive-stat-value" style={{ fontFamily: 'var(--font-mono)' }}>{stats ? stats.total.toLocaleString('es-CL') : '0'} Reg.</span>
                 </div>
               </div>
 
@@ -577,9 +581,35 @@ function App() {
         )
       )}
 
+      {/* SECCIÓN: CAMBIOS DE DOMICILIO POR CORREO (detalle por comuna) */}
+      {stats && (
+        <section className="throughput-section" aria-label="Cambios de domicilio por correo">
+          <DomicilioCorreoChart selectedMonth={selectedMonth} selectedOffice={selectedOffice} refreshKey={dataVersion} />
+        </section>
+      )}
+
+      {/* SECCIÓN: ESTADOS DE RESOLUCIÓN (decisiones, con intermedios aparte) */}
+      {stats && (
+        <section className="throughput-section" aria-label="Estados de resolución">
+          <DecisionBreakdown selectedMonth={selectedMonth} selectedOffice={selectedOffice} refreshKey={dataVersion} />
+        </section>
+      )}
+
+      {/* SECCIÓN: CATASTRO DE PROCESOS (detalle de carpetas por estado) */}
+      {stats && (
+        <section className="throughput-section" aria-label="Catastro de procesos por estado">
+          <CatastroRecords
+            selectedMonth={selectedMonth}
+            selectedOffice={selectedOffice}
+            refreshKey={dataVersion}
+            statusOptions={folderStatusData}
+          />
+        </section>
+      )}
+
       {/* Footer */}
       <footer className="footer-container app-footer">
-        <p className="footer-text">&copy; 2026 Licentia.io. Todos los derechos reservados. Obsidian Systems Division.</p>
+        <p className="footer-text">&copy; 2026 Licencia.ai. Todos los derechos reservados. Obsidian Systems Division.</p>
       </footer>
     </div>
   );

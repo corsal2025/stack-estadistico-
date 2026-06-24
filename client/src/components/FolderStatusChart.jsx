@@ -17,17 +17,6 @@ export default function FolderStatusChart({ data }) {
 
   const chartWidth = width - paddingLeft - paddingRight;
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="chart-card glass-card">
-        <div className="chart-header">
-          <h3>Estado de las Carpetas</h3>
-          <p>Cargando datos...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Agrupaciones analíticas solicitadas por el usuario:
   const getConsolidatedData = () => {
     let conasetTotal = 0;
@@ -37,35 +26,19 @@ export default function FolderStatusChart({ data }) {
     let sinEspecificar = 0;
     let otrosTramites = 0;
 
-    data.forEach(d => {
+    (data || []).forEach(d => {
       const status = d.status.toUpperCase();
-      
-      // Primera Licencia
+
       if (status.includes("1° LICENCIA") || status.includes("1º LICENCIA") || status.includes("PRIMERA LICENCIA")) {
         primeraLicencia += d.value;
       }
-      // Sin Especificar
       else if (status.includes("SIN ESPECIFICAR")) {
         sinEspecificar += d.value;
       }
-      
-      // Agrupamos en los canales que nos pide el usuario:
-      // Subidas a CONASET
-      if (status.includes("CONASET")) {
-        conasetTotal += d.value;
-      }
-      
-      // Subidas con F8
-      if (status.includes("F8")) {
-        f8Total += d.value;
-      }
-      
-      // Cambios de Domicilio
-      if (status.includes("DOMICILIO") || status.includes("DOM.")) {
-        domicilioTotal += d.value;
-      }
-      
-      // Canjes, oficios, archivos, etc.
+
+      if (status.includes("CONASET")) conasetTotal += d.value;
+      if (status.includes("F8")) f8Total += d.value;
+      if (status.includes("DOMICILIO") || status.includes("DOM.")) domicilioTotal += d.value;
       if (status.includes("CANJE") || status.includes("EXTRANJERA") || status.includes("OFICIO") || status.includes("ARCHIVOS") || status.includes("OF.43")) {
         otrosTramites += d.value;
       }
@@ -81,14 +54,14 @@ export default function FolderStatusChart({ data }) {
     ].sort((a, b) => b.value - a.value);
   };
 
-  const displayData = viewMode === 'consolidated' ? getConsolidatedData() : data;
-  const maxVal = displayData.length > 0 ? Math.max(...displayData.map(d => d.value)) * 1.05 : 100;
+  const displayData = viewMode === 'consolidated' ? getConsolidatedData() : (data || []);
+  // Math.max(..., 1) evita división por cero cuando todos los valores son 0 (base limpiada).
+  const maxVal = Math.max(...displayData.map(d => d.value), 1) * 1.05;
 
   useGSAP(() => {
     const bars = containerRef.current.querySelectorAll('.bar-rect-horiz-full');
     const labels = containerRef.current.querySelectorAll('.bar-val-text-full');
 
-    // Animación de ancho de barras
     gsap.fromTo(bars,
       { attr: { width: 0 } },
       {
@@ -99,22 +72,28 @@ export default function FolderStatusChart({ data }) {
       }
     );
 
-    // Animación de aparición de etiquetas de valor
     gsap.fromTo(labels,
       { opacity: 0, x: -5 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 0.4,
-        delay: 0.8,
-        stagger: 0.06
-      }
+      { opacity: 1, x: 0, duration: 0.4, delay: 0.8, stagger: 0.06 }
     );
   }, { dependencies: [viewMode, data], scope: containerRef });
 
-  const rowHeight = 52; // Fila de altura fija para albergar etiqueta superior + barra
-  const barHeight = 12; // Altura de la barra
+  const rowHeight = 52;
+  const barHeight = 12;
   const height = paddingTop + displayData.length * rowHeight + paddingBottom;
+
+  // Solo placeholder si los datos AÚN no cargaron (null). Si están vacíos
+  // (base limpiada), se renderiza la tabla con las categorías en 0.
+  if (!data) {
+    return (
+      <div className="chart-card glass-card">
+        <div className="chart-header">
+          <h3>Estado de las Carpetas</h3>
+          <p>Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-card obsidian-glass folder-chart-container" ref={containerRef}>
@@ -125,13 +104,13 @@ export default function FolderStatusChart({ data }) {
           <p>Volumen de expedientes clasificados por tipo de trámite y fase administrativa</p>
         </div>
         <div className="tab-selector-neon">
-          <button 
+          <button
             className={`tab-btn ${viewMode === 'consolidated' ? 'active' : ''}`}
             onClick={() => setViewMode('consolidated')}
           >
             Consolidado de Flujos
           </button>
-          <button 
+          <button
             className={`tab-btn ${viewMode === 'detailed' ? 'active' : ''}`}
             onClick={() => setViewMode('detailed')}
           >
@@ -150,28 +129,26 @@ export default function FolderStatusChart({ data }) {
           </defs>
 
           {displayData.map((d, idx) => {
-            const yText = paddingTop + idx * rowHeight + 14; // Posición de la etiqueta arriba
-            const yBar = yText + 6; // Posición de la barra abajo del texto
+            const yText = paddingTop + idx * rowHeight + 14;
+            const yBar = yText + 6;
             const barWidth = (d.value / maxVal) * chartWidth;
 
             return (
               <g key={d.status} className="bar-group-horiz-full">
-                {/* Texto Superior: Muestra el nombre completo de la celda de Excel sin recortes */}
-                <text 
-                  className="chart-text" 
-                  x={paddingLeft} 
-                  y={yText} 
+                <text
+                  className="chart-text"
+                  x={paddingLeft}
+                  y={yText}
                   textAnchor="start"
                 >
                   {d.status.toUpperCase()}
                 </text>
 
-                {/* Barra SVG */}
                 <rect
                   className="bar-rect-horiz-full"
                   x={paddingLeft}
                   y={yBar}
-                  width={0} // Comienza en 0 para la animación GSAP
+                  width={0}
                   height={barHeight}
                   rx={4}
                   fill="url(#bar-horiz-glow-gradient)"
@@ -180,7 +157,6 @@ export default function FolderStatusChart({ data }) {
                   onMouseLeave={(e) => gsap.to(e.target, { filter: 'brightness(1)', duration: 0.2 })}
                 />
 
-                {/* Etiqueta de valor exacto a la derecha de la barra */}
                 <text
                   className="bar-val-text-full chart-text"
                   x={paddingLeft + barWidth + 10}

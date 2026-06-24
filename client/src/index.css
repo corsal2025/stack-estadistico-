@@ -877,7 +877,10 @@ body {
 .hero-gradient-text {
   background: linear-gradient(to right, var(--primary), var(--secondary));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  display: inline-block;
+  padding-right: 0.14em;
 }
 
 /* ==========================================================================

@@ -76,7 +76,9 @@ export default function DonutChart({ data, compact = false }) {
     });
   }, { dependencies: [hoveredSegment, totalSum], scope: containerRef });
  
-  if (!data || data.length === 0) {
+  // Solo mostramos placeholder si los datos AÚN no se cargaron (null).
+  // Si están vacíos (base limpiada), renderizamos el donut en 0, no un placeholder.
+  if (!data) {
     return (
       <div className="chart-card glass-card">
         <div className="chart-header">

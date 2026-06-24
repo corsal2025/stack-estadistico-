@@ -180,23 +180,35 @@ function parseWorkbook(workbook) {
             else if (officeRaw.includes('ARGENTINA')) office = 'AV. ARGENTINA';
 
             let moral = String(row['__EMPTY_7'] || '').trim().toUpperCase() || 'NORMAL';
-            let folderStatus = String(row['__EMPTY_8'] || '').trim().toUpperCase() || 'SIN ESPECIFICAR';
+            let folderStatus = canonicalFolderStatus(row['__EMPTY_8']);
 
             let decision = String(row['__EMPTY_9'] || '').trim().toUpperCase();
             if (!decision) decision = 'PENDIENTE';
             else if (decision.includes('OTORGADO')) decision = 'OTORGADO';
             else if (decision.includes('DENEGADO') || decision.includes('RECHAZADO')) decision = 'DENEGADO';
+            else decision = canonicalDecision(decision);
 
             const leadTime = calculateLeadTime(citationDate, uploadDate);
+
+            // En los cambios de domicilio con correo, __EMPTY_2 trae la comuna
+            // de destino (texto) en lugar de una fecha. La capturamos cuando no
+            // es una fecha válida ni un número.
+            const rawE2 = String(row['__EMPTY_2'] || '').trim();
+            const comuna = (!lastFolderDate && rawE2 && Number.isNaN(Number(rawE2)))
+                ? rawE2.toUpperCase()
+                : null;
 
             if (rut || fullName || citationDate) {
                 allRecords.push({
                     id: `${sheetName.replace(/\s+/g, '-')}-${rowIndex}`,
                     month: recordMonth,
                     office,
+                    rut,
+                    fullName,
                     citationDate,
                     uploadDate,
                     lastFolderDate,
+                    comuna,
                     moral,
                     folderStatus,
                     decision,
@@ -291,6 +303,33 @@ export const uploadAndReprocessExcel = (req, res) => {
 /**
  * Retorna todos los datos filtrados por mes y oficina.
  */
+// Normaliza estados de carpeta: colapsa espacios y unifica variantes/typos
+// conocidos de la planilla, para que los conteos sean concordantes en todo
+// el dashboard (ej. "CAMBIO DE DOM SUBIDO CON CORREO" == "CAMBIO DOM. SUBIDO CON CORREO").
+const FOLDER_STATUS_ALIASES = {
+    'CAMBIO DE DOM SUBIDO CON CORREO': 'CAMBIO DOM. SUBIDO CON CORREO'
+};
+
+export function canonicalFolderStatus(s) {
+    const v = String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!v) return 'SIN ESPECIFICAR';
+    return FOLDER_STATUS_ALIASES[v] || v;
+}
+
+// Normaliza decisiones: unifica typos como "ESPERA EXÁMEN" == "ESPERA EXAMEN".
+const DECISION_ALIASES = {
+    'ESPERA EXÁMEN': 'ESPERA EXAMEN'
+};
+
+export function canonicalDecision(s) {
+    const v = String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!v) return 'PENDIENTE';
+    return DECISION_ALIASES[v] || v;
+}
+
+// Decisiones que cuentan como resolución final; el resto son estados intermedios.
+const FINAL_DECISIONS = new Set(['OTORGADO', 'DENEGADO', 'PENDIENTE']);
+
 function getFilteredRecords(month, office) {
     let result = dbCache;
     if (month && month !== 'all') {
@@ -405,7 +444,7 @@ export const getFolderStatusDistribution = (req, res, next) => {
 
     const statusMap = {};
     records.forEach(r => {
-        const status = r.folderStatus || 'SIN ESPECIFICAR';
+        const status = canonicalFolderStatus(r.folderStatus);
         if (!statusMap[status]) statusMap[status] = 0;
         statusMap[status]++;
     });
@@ -417,6 +456,98 @@ export const getFolderStatusDistribution = (req, res, next) => {
     })).sort((a, b) => b.value - a.value);
 
     res.json(data);
+    } catch (err) { next(err); }
+};
+
+/**
+ * API: Cambios de domicilio subidos con correo, contados por comuna de destino.
+ * Filtrable por mes y sede como el resto del dashboard.
+ */
+export const getDomicilioCorreoByComuna = (req, res, next) => {
+    try {
+        const { month, office } = req.query;
+        const records = getFilteredRecords(month, office);
+
+        const correoDom = records.filter(r => {
+            const s = (r.folderStatus || '').toUpperCase();
+            return s.includes('CORREO') && s.includes('DOM');
+        });
+
+        // Agrupamos por nombre normalizado (sin acentos / espacios colapsados)
+        // para que "QUILPUÉ" y "QUILPUE" cuenten como una sola comuna, pero
+        // mostramos la grafía original más frecuente.
+        const groups = {};
+        correoDom.forEach(r => {
+            const orig = r.comuna || 'SIN COMUNA';
+            const key = orig.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+            if (!groups[key]) groups[key] = { value: 0, displays: {} };
+            groups[key].value += 1;
+            groups[key].displays[orig] = (groups[key].displays[orig] || 0) + 1;
+        });
+
+        const byComuna = Object.values(groups)
+            .map(g => {
+                const comuna = Object.keys(g.displays).sort((a, b) => g.displays[b] - g.displays[a])[0];
+                return { comuna, value: g.value };
+            })
+            .sort((a, b) => b.value - a.value);
+
+        res.json({ total: correoDom.length, comunas: byComuna.length, byComuna });
+    } catch (err) { next(err); }
+};
+
+/**
+ * API: Catastro de registros filtrados por estado de carpeta (ej. SIN ESPECIFICAR).
+ * Devuelve el detalle de cada carpeta para auditar qué son esos procesos.
+ */
+export const getRecordsByStatus = (req, res, next) => {
+    try {
+        const { month, office, status } = req.query;
+        let records = getFilteredRecords(month, office);
+
+        if (status && status.toLowerCase() !== 'all') {
+            const target = canonicalFolderStatus(status);
+            records = records.filter(r => canonicalFolderStatus(r.folderStatus) === target);
+        }
+
+        const data = records.map(r => ({
+            rut: r.rut || '',
+            nombre: r.fullName || '',
+            sede: r.office,
+            mes: r.month,
+            fechaCitacion: r.citationDate || '',
+            comuna: r.comuna || '',
+            decision: r.decision,
+            estado: canonicalFolderStatus(r.folderStatus)
+        }));
+
+        res.json({ total: data.length, records: data });
+    } catch (err) { next(err); }
+};
+
+/**
+ * API: Distribución de decisiones (resolución), normalizada. Marca como
+ * "intermediate" los estados que no son Otorgado/Denegado/Pendiente, para
+ * mostrarlos como un item aparte sin perder ningún registro.
+ */
+export const getDecisionDistribution = (req, res, next) => {
+    try {
+        const { month, office } = req.query;
+        const records = getFilteredRecords(month, office);
+
+        const counts = {};
+        records.forEach(r => {
+            const d = canonicalDecision(r.decision);
+            counts[d] = (counts[d] || 0) + 1;
+        });
+
+        const decisions = Object.keys(counts)
+            .map(decision => ({ decision, value: counts[decision], intermediate: !FINAL_DECISIONS.has(decision) }))
+            .sort((a, b) => b.value - a.value);
+
+        const intermediateTotal = decisions.filter(d => d.intermediate).reduce((a, b) => a + b.value, 0);
+
+        res.json({ total: records.length, intermediateTotal, decisions });
     } catch (err) { next(err); }
 };
 

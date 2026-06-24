@@ -24,7 +24,19 @@ export const corsMiddleware = (req, res, next) => {
         return next();
     }
 
-    if (CORS_WHITELIST.includes(origin)) {
+    // Same-origin: the request comes from the very page this server serves.
+    // We compare host (hostname:port) and ignore protocol so it keeps working
+    // behind tunnels/proxies (ngrok), via the LAN IP, or via localhost — i.e.
+    // anywhere this single server is reached. Single-server deploys are always
+    // same-origin, so this is what makes uploads work from any access point.
+    let sameOrigin = false;
+    try {
+        sameOrigin = new URL(origin).host === req.headers.host;
+    } catch {
+        sameOrigin = false;
+    }
+
+    if (sameOrigin || CORS_WHITELIST.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');

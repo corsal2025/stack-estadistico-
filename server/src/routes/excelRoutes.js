@@ -10,7 +10,10 @@ import {
     getRadarData,
     uploadAndReprocessExcel,
     resetDatabase,
-    clearDatabase
+    clearDatabase,
+    getDomicilioCorreoByComuna,
+    getRecordsByStatus,
+    getDecisionDistribution
 } from '../controllers/excelController.js';
 import { validateStatsQuery } from '../middleware/validateRequest.js';
 
@@ -32,6 +35,9 @@ router.get('/trends', validateStatsQuery, getMonthlyTrends);
 router.get('/distribution', validateStatsQuery, getOfficeDistribution);
 router.get('/status', validateStatsQuery, getFolderStatusDistribution);
 router.get('/scatter', validateStatsQuery, getScatterData);
+router.get('/domicilio-correo', validateStatsQuery, getDomicilioCorreoByComuna);
+router.get('/records', getRecordsByStatus);
+router.get('/decisions', validateStatsQuery, getDecisionDistribution);
 router.get('/heatmap', validateStatsQuery, getHeatmapData);
 router.get('/radar', validateStatsQuery, getRadarData);
 

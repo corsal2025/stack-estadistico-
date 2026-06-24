@@ -1,12 +1,45 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 
 gsap.registerPlugin(useGSAP);
 
+// Canonical colors for the known sedes; any other office falls back to the palette.
+const KNOWN_COLORS = {
+  'AV. ARGENTINA': 'var(--primary)',
+  'PLACILLA': 'var(--secondary)',
+  'MERCADO PUERTO': 'var(--accent-purple)'
+};
+const FALLBACK_PALETTE = ['var(--primary)', 'var(--secondary)', 'var(--accent-purple)', '#f59e0b', '#10b981', '#ef4444', '#3b82f6'];
+
+const titleCase = (s) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
 export default function ScatterPlot({ data }) {
   const containerRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
+  const [officeFilter, setOfficeFilter] = useState('all');
+
+  // Real office list comes from the data itself, so new Excels with different
+  // sedes populate the dropdown automatically.
+  const offices = useMemo(
+    () => [...new Set((data || []).map((d) => d.office))].filter(Boolean).sort(),
+    [data]
+  );
+
+  // Assign a stable color per office (known sedes keep their canonical color).
+  const colorFor = useMemo(() => {
+    const map = {};
+    offices.forEach((off, i) => {
+      map[off] = KNOWN_COLORS[off] || FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
+    });
+    return map;
+  }, [offices]);
+
+  // Apply the histogram's own office filter (independent of the global filter).
+  const filtered = useMemo(
+    () => (officeFilter === 'all' ? data || [] : (data || []).filter((d) => d.office === officeFilter)),
+    [data, officeFilter]
+  );
 
   // Dimensiones del gráfico (Ajustadas para una vista ancha de pantalla completa)
   const width = 850;
@@ -19,22 +52,12 @@ export default function ScatterPlot({ data }) {
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  // Paleta de colores para las sedes adaptables
-  const colors = {
-    'AV. ARGENTINA': 'var(--primary)',
-    'PLACILLA': 'var(--secondary)',
-    'MERCADO PUERTO': 'var(--accent-purple)'
-  };
-
   // 1. Calcular límites adaptativos para el eje Y
-  const leadTimes = data ? data.map(d => d.avgLeadTime) : [];
+  const leadTimes = filtered.map((d) => d.avgLeadTime);
   const maxLeadTime = leadTimes.length > 0 ? Math.max(...leadTimes) : 10;
-  
-  // Si los datos son bajos (ej. promedio 3-5 días), no subimos el límite a 30.
-  // Ajustamos el límite superior para que sea al menos 6 y máximo dinámico.
   const yMaxLimit = Math.max(maxLeadTime + 1, 6);
 
-  const dates = data ? data.map(d => new Date(d.date).getTime()) : [];
+  const dates = filtered.map((d) => new Date(d.date).getTime());
   const minDate = dates.length > 0 ? Math.min(...dates) : Date.now() - 30 * 24 * 60 * 60 * 1000;
   const maxDate = dates.length > 0 ? Math.max(...dates) : Date.now();
   const dateRange = maxDate - minDate || 1;
@@ -56,12 +79,12 @@ export default function ScatterPlot({ data }) {
 
   // 3. Animaciones GSAP de dispersión
   useGSAP(() => {
-    if (!data || data.length === 0) return;
+    if (filtered.length === 0) return;
 
     const dots = containerRef.current.querySelectorAll('.scatter-dot');
-    gsap.fromTo(dots, 
+    gsap.fromTo(dots,
       { attr: { r: 0 }, opacity: 0 },
-      { 
+      {
         attr: { r: (i, target) => target.getAttribute('data-target-r') },
         opacity: 0.8,
         duration: 1.2,
@@ -69,7 +92,7 @@ export default function ScatterPlot({ data }) {
         ease: 'elastic.out(1.1, 0.7)'
       }
     );
-  }, { dependencies: [data], scope: containerRef });
+  }, { dependencies: [filtered], scope: containerRef });
 
   const formatDateLabel = (timestamp) => {
     const date = new Date(timestamp);
@@ -105,7 +128,25 @@ export default function ScatterPlot({ data }) {
     });
   };
 
-  if (!data || data.length === 0) {
+  // Dropdown de sede del histograma (reutilizable en los estados con/sin datos)
+  const officeSelect = (
+    <select
+      className="custom-select"
+      value={officeFilter}
+      onChange={(e) => setOfficeFilter(e.target.value)}
+      style={{ minWidth: '190px', fontSize: '0.78rem' }}
+      aria-label="Filtrar histograma por sede"
+    >
+      <option value="all">Todas las sedes</option>
+      {offices.map((off) => (
+        <option key={off} value={off}>{titleCase(off)}</option>
+      ))}
+    </select>
+  );
+
+  // Solo placeholder si los datos AÚN no cargaron (null). Si están vacíos
+  // (base limpiada), se renderiza el marco del gráfico con el aviso de sin datos.
+  if (!data) {
     return (
       <div className="chart-card obsidian-glass">
         <div className="chart-header">
@@ -132,29 +173,37 @@ export default function ScatterPlot({ data }) {
 
   return (
     <div className="chart-card obsidian-glass" ref={containerRef}>
-      <div className="chart-header">
-        <h3>Histograma de Dispersión: Tiempo de Resolución (Eficiencia Operativa)</h3>
-        <p>Distribución diaria de las citaciones y el tiempo de respuesta (Lead Time) por oficina</p>
+      <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <h3>Histograma de Dispersión: Tiempo de Resolución (Eficiencia Operativa)</h3>
+          <p>Distribución diaria de las citaciones y el tiempo de respuesta (Lead Time) por oficina</p>
+        </div>
+        {officeSelect}
       </div>
 
       <div className="chart-body">
+        {filtered.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', padding: '40px 0', textAlign: 'center' }}>
+            {offices.length === 0 ? 'Sin datos cargados.' : 'No hay datos para la sede seleccionada.'}
+          </p>
+        ) : (
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%">
           {/* Líneas de rejilla horizontales (Eje Y) */}
           {yTickValues.map((val, idx) => {
             const yPos = getY(val);
             return (
               <g key={`y-grid-${idx}`}>
-                <line 
-                  className="chart-grid-line" 
-                  x1={paddingLeft} 
-                  y1={yPos} 
-                  x2={width - paddingRight} 
-                  y2={yPos} 
+                <line
+                  className="chart-grid-line"
+                  x1={paddingLeft}
+                  y1={yPos}
+                  x2={width - paddingRight}
+                  y2={yPos}
                 />
-                <text 
-                  className="chart-text" 
-                  x={paddingLeft - 12} 
-                  y={yPos + 4} 
+                <text
+                  className="chart-text"
+                  x={paddingLeft - 12}
+                  y={yPos + 4}
                   textAnchor="end"
                 >
                   {val} {val === 1 ? 'día' : 'días'}
@@ -168,17 +217,17 @@ export default function ScatterPlot({ data }) {
             const xPos = paddingLeft + (idx / (xTicks - 1)) * chartWidth;
             return (
               <g key={`x-grid-${idx}`}>
-                <line 
-                  className="chart-grid-line" 
-                  x1={xPos} 
-                  y1={paddingTop} 
-                  x2={xPos} 
-                  y2={height - paddingBottom} 
+                <line
+                  className="chart-grid-line"
+                  x1={xPos}
+                  y1={paddingTop}
+                  x2={xPos}
+                  y2={height - paddingBottom}
                 />
-                <text 
-                  className="chart-text" 
-                  x={xPos} 
-                  y={height - paddingBottom + 18} 
+                <text
+                  className="chart-text"
+                  x={xPos}
+                  y={height - paddingBottom + 18}
                   textAnchor="middle"
                 >
                   {formatDateLabel(val)}
@@ -192,7 +241,7 @@ export default function ScatterPlot({ data }) {
           <line className="chart-axis-line" x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} />
 
           {/* Puntos de Dispersión (Nodos) */}
-          {data.map((item, idx) => {
+          {filtered.map((item, idx) => {
             const cx = getX(item.date);
             const cy = getY(item.avgLeadTime);
             const r = getRadius(item.volume);
@@ -204,37 +253,40 @@ export default function ScatterPlot({ data }) {
                 cy={cy}
                 r={r}
                 data-target-r={r}
-                fill={colors[item.office] || '#8B5CF6'}
+                fill={colorFor[item.office] || '#8B5CF6'}
                 onMouseEnter={(e) => handleMouseEnter(e, item)}
                 onMouseLeave={() => setTooltip(null)}
               />
             );
           })}
         </svg>
+        )}
 
-        {/* Leyenda de colores del Scatter */}
+        {/* Leyenda de colores del Scatter (sedes reales presentes) */}
         <div className="scatter-legends-container">
-          {Object.keys(colors).map(office => (
-            <div key={office} className="scatter-legend-item">
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: colors[office] }}></span>
-              {office.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
-            </div>
-          ))}
+          {offices
+            .filter((off) => officeFilter === 'all' || off === officeFilter)
+            .map((office) => (
+              <div key={office} className="scatter-legend-item">
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: colorFor[office] }}></span>
+                {titleCase(office)}
+              </div>
+            ))}
         </div>
 
         {/* Tooltip Dinámico */}
         {tooltip && (
-          <div 
+          <div
             className="custom-tooltip obsidian-glass"
-            style={{ 
-              left: `${tooltip.x}px`, 
+            style={{
+              left: `${tooltip.x}px`,
               top: `${tooltip.y}px`
             }}
           >
             <span className="tooltip-date">
               {new Date(tooltip.item.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
-            <span>Sede: <strong>{tooltip.item.office.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</strong></span>
+            <span>Sede: <strong>{titleCase(tooltip.item.office)}</strong></span>
             <span>Trámites: <strong>{tooltip.item.volume} carpetas</strong></span>
             <span>Tiempo de resolución: <strong style={{ color: 'var(--primary)' }}>{tooltip.item.avgLeadTime} {tooltip.item.avgLeadTime === 1 ? 'día' : 'días'}</strong></span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
