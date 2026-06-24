@@ -67,8 +67,9 @@ app.get('*', (req, res) => {
 // Global error handler — must be last
 app.use(errorHandler);
 
-// Arrancar servidor
-app.listen(PORT, () => {
+// Arrancar servidor — bind explícito a 0.0.0.0 (IPv4, todas las interfaces)
+// para que otras PCs de la red (que se conectan por IPv4) puedan acceder.
+app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server listening on port ${PORT}`, {
         port: PORT,
         baseUrl: `http://localhost:${PORT}/api/stats`
