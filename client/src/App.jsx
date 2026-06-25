@@ -319,12 +319,12 @@ function App() {
             <span>SISTEMA ONLINE: V4.2.0</span>
           </div>
           <h2 className="hero-title">
-            Establecé tu <br />
+            Establece tu <br />
             <span className="hero-gradient-text" style={{ fontStyle: 'italic' }}>Centro de Control</span>
           </h2>
           <p className="hero-description">
-            Visualización estadística en tiempo real para el control de licencias de conducir. 
-            Procesá expedientes y auditá el rendimiento operativo del departamento a través de un centro de comando unificado.
+            Visualización estadística en tiempo real del Departamento de Licencias de Conducir.
+            Procesa expedientes, mide los tiempos de resolución y audita el rendimiento de cada sede desde un solo panel.
           </p>
           
           {/* Selector y controles flotantes integrados en el Hero */}
@@ -410,8 +410,8 @@ function App() {
             {error}
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>
-            Asegurate de que el servidor backend esté corriendo en <strong style={{ color: 'var(--primary)' }}>http://localhost:3002</strong>.<br/>
-            Ejecutá en la carpeta <code style={{ color: 'var(--primary)' }}>server/</code>: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '3px' }}>node src/app.js</code>
+            Asegúrate de que el servidor backend esté corriendo en <strong style={{ color: 'var(--primary)' }}>http://localhost:3002</strong>.<br/>
+            Ejecuta en la carpeta <code style={{ color: 'var(--primary)' }}>server/</code>: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '3px' }}>node src/app.js</code>
           </p>
           <button
             onClick={() => window.location.reload()}

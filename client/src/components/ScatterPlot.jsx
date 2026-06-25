@@ -176,7 +176,7 @@ export default function ScatterPlot({ data }) {
       <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h3>Histograma de Dispersión: Tiempo de Resolución (Eficiencia Operativa)</h3>
-          <p>Distribución diaria de las citaciones y el tiempo de respuesta (Lead Time) por oficina</p>
+          <p>Cada punto es un día de una sede: la altura indica los días promedio de resolución y el tamaño, el volumen de carpetas de ese día</p>
         </div>
         {officeSelect}
       </div>

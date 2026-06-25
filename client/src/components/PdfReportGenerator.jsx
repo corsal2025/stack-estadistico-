@@ -10,19 +10,23 @@ export async function generatePdfReport({ selectedMonth, selectedOffice }) {
   // -- 1. Fetch datos frescos de la API --------------------------------------
   const qp = `?month=${selectedMonth}&office=${selectedOffice}`;
 
-  const [resSummary, resTrends, resOffice, resStatus] = await Promise.all([
+  const [resSummary, resTrends, resOffice, resStatus, resDecisions, resComunas] = await Promise.all([
     fetch(`${API_BASE_URL}/summary${qp}`),
     fetch(`${API_BASE_URL}/trends?office=${selectedOffice}`),
     fetch(`${API_BASE_URL}/distribution?month=${selectedMonth}`),
-    fetch(`${API_BASE_URL}/status${qp}`)
+    fetch(`${API_BASE_URL}/status${qp}`),
+    fetch(`${API_BASE_URL}/decisions${qp}`),
+    fetch(`${API_BASE_URL}/domicilio-correo${qp}`)
   ]);
 
   if (!resSummary.ok || !resTrends.ok || !resOffice.ok || !resStatus.ok) {
     throw new Error('No se pudo conectar con el servidor para obtener datos actualizados.');
   }
 
-  const [stats, monthlyTrends, officeDist, folderStatusData] = await Promise.all([
-    resSummary.json(), resTrends.json(), resOffice.json(), resStatus.json()
+  const [stats, monthlyTrends, officeDist, folderStatusData, decisionData, comunaData] = await Promise.all([
+    resSummary.json(), resTrends.json(), resOffice.json(), resStatus.json(),
+    resDecisions.ok ? resDecisions.json() : { decisions: [], intermediateTotal: 0 },
+    resComunas.ok ? resComunas.json() : { total: 0, comunas: 0, byComuna: [] }
   ]);
 
   // -- 2. Crear documento ----------------------------------------------------
@@ -80,10 +84,6 @@ export async function generatePdfReport({ selectedMonth, selectedOffice }) {
   const mainStatus = folderStatusData?.length > 0 ? folderStatusData[0].status : '-';
   const mainStatusVol = folderStatusData?.length > 0 ? folderStatusData[0].value : 0;
 
-  let timeEval = 'óptimo.';
-  if (stats.avgLeadTime > 20) timeEval = 'elevado. Se recomienda revisar cuellos de botella operativos.';
-  else if (stats.avgLeadTime > 12) timeEval = 'moderado. Monitorear en períodos de alta afluencia.';
-
   doc.setFillColor(248, 250, 252);
   doc.rect(margin, yPos, contentWidth, 40, 'F');
   doc.setDrawColor(0, 219, 231);
@@ -98,13 +98,17 @@ export async function generatePdfReport({ selectedMonth, selectedOffice }) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
+  const intermedios = decisionData.intermediateTotal || 0;
   const summaryText =
-    `El presente informe refleja el estado operativo en tiempo real del Departamento de Licencias de Conducir al ${today}. ` +
-    `Se procesaron ${stats.total.toLocaleString('es-ES')} solicitudes en el período evaluado. ` +
-    `Se otorgaron ${stats.otorgados.toLocaleString('es-ES')} licencias (tasa de aprobación: ${aprRate}%) y se denegaron ${stats.denegados.toLocaleString('es-ES')} carpetas. ` +
-    `Se identificaron ${stats.moralAlerts.toLocaleString('es-ES')} alertas de Idoneidad Moral (${alertRate}% del total). ` +
-    `El trámite predominante es "${mainStatus}" con ${mainStatusVol.toLocaleString('es-ES')} registros. ` +
-    `El tiempo promedio de resolución fue ${stats.avgLeadTime} días, nivel ${timeEval}`;
+    `Período: ${mesLabel}.   Sede: ${sedeLabel}.   ` +
+    `Carpetas totales: ${stats.total.toLocaleString('es-CL')}.   ` +
+    `Otorgadas: ${stats.otorgados.toLocaleString('es-CL')} (${aprRate}%).   ` +
+    `Denegadas: ${stats.denegados.toLocaleString('es-CL')}.   ` +
+    `Pendientes: ${stats.pendientes.toLocaleString('es-CL')}.   ` +
+    `En proceso (estados intermedios): ${intermedios.toLocaleString('es-CL')}.   ` +
+    `Alertas de idoneidad moral: ${stats.moralAlerts.toLocaleString('es-CL')} (${alertRate}%).   ` +
+    `Trámite más frecuente: "${mainStatus}" (${mainStatusVol.toLocaleString('es-CL')}).   ` +
+    `Tiempo promedio de resolución: ${stats.avgLeadTime} días.`;
 
   // Párrafo justificado para una lectura más prolija
   doc.text(summaryText, margin + 5, yPos + 13, { maxWidth: contentWidth - 10, align: 'justify' });
@@ -259,33 +263,64 @@ export async function generatePdfReport({ selectedMonth, selectedOffice }) {
   }
   yPos += maxRows * 7 + 10;
 
-  // -- 9. Recomendaciones ----------------------------------------------------
-  if (yPos < pageHeight - 50) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('RECOMENDACIONES OPERATIVAS', margin, yPos);
-    yPos += 5;
+  // -- 9. Datos concretos: estados de resolución + comunas -------------------
+  if (yPos > pageHeight - 75) { doc.addPage(); yPos = 15; }
 
-    const sortedOff = [...(officeDist || [])].sort((a, b) => b.value - a.value);
-    const mainOffice = sortedOff[0]?.office || '-';
-    const mainOffVol = sortedOff[0]?.value || 0;
-    const sortedLT = [...(officeDist || [])].filter(o => o.value > 0).sort((a, b) => b.avgLeadTime - a.avgLeadTime);
-    const slowOff = sortedLT[0]?.office || '-';
-    const slowLT = sortedLT[0]?.avgLeadTime || 0;
-    const peakMonthData = [...(monthlyTrends || [])].sort((a, b) => b.total - a.total)[0];
-    const peakMonth = peakMonthData?.month || '-';
-    const peakVol = peakMonthData?.total || 0;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('ESTADOS DE RESOLUCIÓN', margin, yPos);
+  doc.text('CAMBIO DOMICILIO POR CORREO — TOP COMUNAS', margin + colWidth + 6, yPos);
+  yPos += 5;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(71, 85, 105);
-    const recText =
-      `1. Carga crítica: "${mainOffice}" concentra ${mainOffVol.toLocaleString('es-ES')} trámites. "${slowOff}" registra el mayor Lead Time (${slowLT} días). Se recomienda reasignar personal entre sedes.\n\n` +
-      `2. Pico estacional: "${peakMonth}" tuvo el mayor volumen (${peakVol.toLocaleString('es-ES')} solicitudes). Planificar capacidad operativa para períodos equivalentes.\n\n` +
-      `3. Filtro moral: Efectividad del ${stats.moralEffectiveness}% en la detección de irregularidades. El ${alertRate}% de alertas requirió revisión extraordinaria.`;
-    doc.text(recText, margin, yPos + 3, { maxWidth: contentWidth, align: 'justify' });
+  doc.setFillColor(15, 23, 42);
+  doc.rect(margin, yPos, colWidth, 7, 'F');
+  doc.rect(margin + colWidth + 6, yPos, colWidth, 7, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(255, 255, 255);
+  doc.text('DECISIÓN', margin + 3, yPos + 4.5);
+  doc.text('CANT.', margin + colWidth - 3, yPos + 4.5, { align: 'right' });
+  doc.text('COMUNA', margin + colWidth + 9, yPos + 4.5);
+  doc.text('CANT.', margin + contentWidth - 3, yPos + 4.5, { align: 'right' });
+  yPos += 7;
+
+  const decisions = decisionData.decisions || [];
+  const topComunas = (comunaData.byComuna || []).slice(0, 8);
+  const rows2 = Math.max(decisions.length, topComunas.length, 1);
+  doc.setFontSize(7.5);
+  for (let i = 0; i < rows2; i++) {
+    const rowY = yPos + i * 6.5;
+    if (i % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, rowY, colWidth, 6.5, 'F');
+      doc.rect(margin + colWidth + 6, rowY, colWidth, 6.5, 'F');
+    }
+    if (decisions[i]) {
+      const d = decisions[i];
+      doc.setFont('helvetica', 'normal');
+      if (d.intermediate) doc.setTextColor(180, 110, 20); else doc.setTextColor(51, 65, 85);
+      const label = d.decision.length > 26 ? `${d.decision.slice(0, 24)}...` : d.decision;
+      doc.text(label, margin + 3, rowY + 4.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(d.value.toLocaleString('es-CL'), margin + colWidth - 3, rowY + 4.5, { align: 'right' });
+    }
+    if (topComunas[i]) {
+      const c = topComunas[i];
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(51, 65, 85);
+      const cl = c.comuna.length > 26 ? `${c.comuna.slice(0, 24)}...` : c.comuna;
+      doc.text(cl, margin + colWidth + 9, rowY + 4.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(c.value.toLocaleString('es-CL'), margin + contentWidth - 3, rowY + 4.5, { align: 'right' });
+    }
   }
+  yPos += rows2 * 6.5 + 4;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Estados intermedios (en proceso) marcados en naranja. Cambio de domicilio por correo: ${(comunaData.total || 0).toLocaleString('es-CL')} carpetas en ${(comunaData.comunas || 0)} comunas.`, margin, yPos);
 
   // -- 10. Pie de página -----------------------------------------------------
   doc.setFont('helvetica', 'normal');

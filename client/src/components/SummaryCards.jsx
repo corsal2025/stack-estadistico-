@@ -90,7 +90,7 @@ export default function SummaryCards({ stats, loading }) {
 
           <div className="bento-card-middle">
             <h3 className="bento-card-heading">Total Expedientes</h3>
-            <p className="bento-card-desc">Trámites totales ingresados e indexados en el sistema.</p>
+            <p className="bento-card-desc">Cantidad total de carpetas cargadas, según el mes y la sede seleccionados.</p>
           </div>
 
           <div className="bento-card-bottom">
@@ -115,7 +115,7 @@ export default function SummaryCards({ stats, loading }) {
 
           <div className="bento-card-middle">
             <h3 className="bento-card-heading">Tasa Aprobación</h3>
-            <p className="bento-card-desc">Proporción de resoluciones de otorgamiento de licencias.</p>
+            <p className="bento-card-desc">Porcentaje de carpetas otorgadas sobre el total (otorgadas ÷ total).</p>
           </div>
 
           <div className="bento-card-bottom">
@@ -144,7 +144,7 @@ export default function SummaryCards({ stats, loading }) {
 
           <div className="bento-card-middle">
             <h3 className="bento-card-heading">Filtro Moral</h3>
-            <p className="bento-card-desc">Expedientes retenidos o alertados para revisión operativa.</p>
+            <p className="bento-card-desc">Carpetas con alerta de idoneidad moral, pendientes de revisión.</p>
           </div>
 
           <div className="bento-card-bottom">

@@ -101,7 +101,7 @@ export default function FolderStatusChart({ data }) {
         <div className="header-info">
           <span className="chart-card-title">Categorización del Trámite</span>
           <h3>Estado de las Carpetas</h3>
-          <p>Volumen de expedientes clasificados por tipo de trámite y fase administrativa</p>
+          <p>Cantidad de carpetas según su etapa administrativa. "Consolidado" agrupa por flujo; "Todos los Estados" muestra el detalle</p>
         </div>
         <div className="tab-selector-neon">
           <button

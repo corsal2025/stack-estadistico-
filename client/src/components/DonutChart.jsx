@@ -173,7 +173,7 @@ export default function DonutChart({ data, compact = false }) {
     <div className="chart-card obsidian-glass" ref={containerRef} style={{ minHeight: '380px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       <div className="chart-header">
         <h3 style={{ fontFamily: 'Geist' }}>Distribución y Eficiencia por Oficina</h3>
-        <p style={{ color: 'var(--text-secondary)' }}>Participación relativa y tiempo de resolución promedio de trámites</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Cuánto aporta cada sede al total de carpetas y su tiempo promedio de resolución, en días</p>
       </div>
  
       <div className="donut-body-wrapper">

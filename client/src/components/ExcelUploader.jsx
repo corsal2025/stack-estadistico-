@@ -99,7 +99,7 @@ export default function ExcelUploader({ onUploadSuccess }) {
   }, [onUploadSuccess]);
 
   const handleClearAll = useCallback(async () => {
-    if (!window.confirm('¿Estás seguro de que querés ELIMINAR TODOS los datos del sistema? Esta acción deja el dashboard vacío. Luego podrás cargar un Excel nuevo.')) {
+    if (!window.confirm('¿Estás seguro de que quieres ELIMINAR TODOS los datos del sistema? Esta acción deja el dashboard vacío. Luego podrás cargar un Excel nuevo.')) {
       return;
     }
 
@@ -161,7 +161,7 @@ export default function ExcelUploader({ onUploadSuccess }) {
         </div>
         <div>
           <h3 className="uploader-title">Centro de Carga de Datos</h3>
-          <p className="uploader-subtitle">Subí tu planilla Excel para actualizar el sistema en tiempo real</p>
+          <p className="uploader-subtitle">Sube tu planilla Excel para actualizar el sistema en tiempo real</p>
         </div>
         <div className="uploader-status-badge">
           {status === 'idle' && <span className="uploader-badge badge-ready">LISTO</span>}
@@ -193,9 +193,9 @@ export default function ExcelUploader({ onUploadSuccess }) {
             </svg>
           </div>
           <p className="dropzone-main-text">
-            {isDragging ? 'Soltá el archivo aquí' : 'Arrastrá tu Excel aquí'}
+            {isDragging ? 'Suelta el archivo aquí' : 'Arrastra tu Excel aquí'}
           </p>
-          <p className="dropzone-sub-text">o hacé click para seleccionar • .xlsx / .xls • máx. 50 MB</p>
+          <p className="dropzone-sub-text">o haz clic para seleccionar • .xlsx / .xls • máx. 50 MB</p>
 
           {/* Format hint */}
           <div className="dropzone-format-hint">
