@@ -23,7 +23,8 @@ const THEMES = [
   { id: 'aurora-command', name: 'Aurora Command' },
   { id: 'obsidian-precision', name: 'Obsidian Precision' },
   { id: 'steel-terminal', name: 'Steel Terminal' },
-  { id: 'vanguard-flux', name: 'Vanguard Flux' }
+  { id: 'vanguard-flux', name: 'Vanguard Flux' },
+  { id: 'light-productivity', name: 'Modo Claro (Blanco)' }
 ];
 
 function App() {
